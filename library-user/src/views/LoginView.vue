@@ -18,6 +18,8 @@ async function submit() {
     await authStore.login(form);
     ElMessage.success("登录成功");
     router.push("/");
+  } catch {
+    // 错误提示由 request 拦截器统一处理，这里吞掉异常避免控制台未处理告警。
   } finally {
     loading.value = false;
   }

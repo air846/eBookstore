@@ -19,6 +19,8 @@ async function submit() {
     await request.post("/user/register", form);
     ElMessage.success("注册成功，请登录");
     router.push("/login");
+  } catch {
+    // 错误提示由 request 拦截器统一处理。
   } finally {
     loading.value = false;
   }

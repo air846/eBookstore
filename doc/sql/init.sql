@@ -80,8 +80,8 @@ CREATE TABLE visit_log (
 
 -- 演示密码均为 123456
 INSERT INTO user (username, password, nickname, email, role, status) VALUES
-('admin', '$2a$10$QfMNf4Dq9A3d8fnK3j7ynOzsM9Qf8s4QvZfV9EZXfQ4xKfFZ2xQvW', '系统管理员', 'admin@bookstore.com', 1, 1),
-('reader', '$2a$10$QfMNf4Dq9A3d8fnK3j7ynOzsM9Qf8s4QvZfV9EZXfQ4xKfFZ2xQvW', '普通读者', 'reader@bookstore.com', 0, 1);
+('admin', '$2b$10$ht/XnFFYH.n942kdEfMASua6D/pZsGPtxxkqvUFQXIBqc5loh8oN6', '系统管理员', 'admin@bookstore.com', 1, 1),
+('reader', '$2b$10$ht/XnFFYH.n942kdEfMASua6D/pZsGPtxxkqvUFQXIBqc5loh8oN6', '普通读者', 'reader@bookstore.com', 0, 1);
 
 INSERT INTO category (name, parent_id, sort_order) VALUES
 ('文学', 0, 1),
