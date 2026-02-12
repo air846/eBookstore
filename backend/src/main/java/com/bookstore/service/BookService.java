@@ -1,0 +1,35 @@
+package com.bookstore.service;
+
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.bookstore.dto.BookQueryRequest;
+import com.bookstore.dto.BookSaveRequest;
+import com.bookstore.dto.HistorySaveRequest;
+import com.bookstore.entity.Book;
+import com.bookstore.entity.ReadHistory;
+
+import java.util.List;
+
+public interface BookService {
+
+    IPage<Book> pageBooks(BookQueryRequest request, boolean adminMode);
+
+    Book detail(Long id);
+
+    String readBook(Long userId, String ip, Long bookId);
+
+    void favorite(Long userId, Long bookId);
+
+    List<Book> favoriteList(Long userId);
+
+    void saveHistory(Long userId, HistorySaveRequest request);
+
+    List<ReadHistory> historyList(Long userId);
+
+    void create(BookSaveRequest request);
+
+    void update(Long id, BookSaveRequest request);
+
+    void updateStatus(Long id, Integer status);
+
+    void delete(Long id);
+}
