@@ -1,14 +1,24 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRouter } from "vue-router";
+// 管理端布局：侧边栏菜单 + 内容区
+import { computed } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useAdminAuthStore } from "../stores/auth";
 
 const router = useRouter();
+const route = useRoute();
 const authStore = useAdminAuthStore();
-const active = ref(window.location.pathname || "/");
+
+const active = computed(() => {
+  const path = route.path;
+  if (path.startsWith("/books")) return "/books";
+  if (path.startsWith("/categories")) return "/categories";
+  if (path.startsWith("/users")) return "/users";
+  if (path.startsWith("/interactions")) return "/interactions";
+  if (path.startsWith("/system")) return "/system";
+  return "/";
+});
 
 function go(path: string) {
-  active.value = path;
   router.push(path);
 }
 
@@ -20,22 +30,31 @@ function logout() {
 
 <template>
   <el-container class="layout">
-    <el-aside width="220px" class="aside">
-      <div class="logo">书城管理后台</div>
-      <el-menu :default-active="active">
-        <el-menu-item index="/" @click="go('/')">仪表盘</el-menu-item>
+    <el-aside width="240px" class="aside">
+      <div class="logo">
+        <div class="title">云笺管理台</div>
+        <div class="sub">Elegant Console</div>
+      </div>
+
+      <el-menu :default-active="active" class="menu">
+        <el-menu-item index="/" @click="go('/')">数据概览</el-menu-item>
         <el-menu-item index="/books" @click="go('/books')">书籍管理</el-menu-item>
         <el-menu-item index="/categories" @click="go('/categories')">分类管理</el-menu-item>
         <el-menu-item index="/users" @click="go('/users')">用户管理</el-menu-item>
+        <el-menu-item index="/interactions" @click="go('/interactions')">互动管理</el-menu-item>
         <el-menu-item index="/system" @click="go('/system')">系统设置</el-menu-item>
       </el-menu>
     </el-aside>
+
     <el-container>
       <el-header class="header">
-        <span>欢迎，{{ authStore.admin?.nickname || "管理员" }}</span>
-        <el-button @click="logout">退出登录</el-button>
+        <div class="header-title">后台管理</div>
+        <div class="header-right">
+          <span>欢迎，{{ authStore.admin?.nickname || "管理员" }}</span>
+          <el-button @click="logout">退出登录</el-button>
+        </div>
       </el-header>
-      <el-main>
+      <el-main class="main">
         <router-view />
       </el-main>
     </el-container>
@@ -46,21 +65,92 @@ function logout() {
 .layout {
   min-height: 100vh;
 }
+
 .aside {
-  background: #111827;
-  color: #fff;
+  padding: 20px 16px;
+  border-right: 1px solid rgba(127, 114, 101, 0.16);
+  background: rgba(252, 246, 238, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
+
 .logo {
-  height: 56px;
-  line-height: 56px;
-  text-align: center;
-  font-weight: 700;
+  margin-bottom: 20px;
+  padding: 10px 8px 14px;
+  border-bottom: 1px solid rgba(127, 114, 101, 0.16);
 }
+
+.title {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: #392f24;
+}
+
+.sub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #918170;
+}
+
+.menu {
+  border-right: none;
+  background: transparent;
+}
+
+.menu :deep(.el-menu-item) {
+  border-radius: 10px;
+  margin-bottom: 6px;
+  color: #4e4033;
+}
+
+.menu :deep(.is-active) {
+  color: #7f654c;
+  background: rgba(154, 127, 98, 0.12);
+}
+
 .header {
+  height: 74px;
+  padding: 0 28px;
+  border-bottom: 1px solid rgba(127, 114, 101, 0.16);
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #e5e7eb;
-  background: #fff;
+  justify-content: space-between;
+  background: rgba(252, 246, 238, 0.66);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.header-title {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  color: #3d3127;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #736456;
+}
+
+.main {
+  padding: 24px;
+}
+
+@media (max-width: 1024px) {
+  .aside {
+    width: 200px !important;
+    padding: 14px 10px;
+  }
+
+  .header {
+    padding: 0 14px;
+  }
+
+  .main {
+    padding: 14px;
+  }
 }
 </style>

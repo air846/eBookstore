@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 管理端登录页
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -19,7 +20,7 @@ async function submit() {
     ElMessage.success("登录成功");
     router.push("/");
   } catch {
-    // 错误提示由 request 拦截器统一处理，这里避免未处理 Promise 异常。
+    // error message handled by request interceptor
   } finally {
     loading.value = false;
   }
@@ -29,7 +30,8 @@ async function submit() {
 <template>
   <div class="login-page">
     <el-card class="card">
-      <template #header>后台登录</template>
+      <h1 class="title">后台登录</h1>
+      <p class="subtitle">优雅管理你的书城内容与用户数据</p>
       <el-form label-position="top">
         <el-form-item label="管理员账号">
           <el-input v-model="form.username" />
@@ -48,11 +50,25 @@ async function submit() {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  background: #f3f4f6;
+  padding: 20px 12px;
 }
+
 .card {
-  width: 420px;
+  width: min(460px, 100%);
+  padding: 8px 4px;
 }
+
+.title {
+  margin: 2px 0 6px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  color: var(--admin-muted);
+}
+
 .full {
   width: 100%;
 }

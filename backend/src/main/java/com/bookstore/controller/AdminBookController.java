@@ -3,6 +3,7 @@ package com.bookstore.controller;
 import com.bookstore.common.ApiResponse;
 import com.bookstore.dto.BookQueryRequest;
 import com.bookstore.dto.BookSaveRequest;
+import com.bookstore.dto.ChapterSaveRequest;
 import com.bookstore.service.BookService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -50,6 +51,31 @@ public class AdminBookController {
     @DeleteMapping("/{id}")
     public ApiResponse<Void> delete(@PathVariable Long id) {
         bookService.delete(id);
+        return ApiResponse.success();
+    }
+
+    @GetMapping("/{bookId}/chapters")
+    public ApiResponse<?> chapterList(@PathVariable Long bookId) {
+        return ApiResponse.success(bookService.listChapters(bookId));
+    }
+
+    @PostMapping("/{bookId}/chapters")
+    public ApiResponse<Void> createChapter(@PathVariable Long bookId, @Valid @RequestBody ChapterSaveRequest request) {
+        bookService.createChapter(bookId, request);
+        return ApiResponse.success();
+    }
+
+    @PutMapping("/{bookId}/chapters/{chapterId}")
+    public ApiResponse<Void> updateChapter(@PathVariable Long bookId,
+                                           @PathVariable Long chapterId,
+                                           @Valid @RequestBody ChapterSaveRequest request) {
+        bookService.updateChapter(bookId, chapterId, request);
+        return ApiResponse.success();
+    }
+
+    @DeleteMapping("/{bookId}/chapters/{chapterId}")
+    public ApiResponse<Void> deleteChapter(@PathVariable Long bookId, @PathVariable Long chapterId) {
+        bookService.deleteChapter(bookId, chapterId);
         return ApiResponse.success();
     }
 }

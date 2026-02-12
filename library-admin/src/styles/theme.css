@@ -1,0 +1,62 @@
+:root {
+  --admin-bg: #f4efe8;
+  --admin-bg-soft: #faf6f1;
+  --admin-glass: rgba(255, 251, 245, 0.74);
+  --admin-text: #2f2a24;
+  --admin-muted: #7f7265;
+  --admin-line: rgba(126, 105, 82, 0.18);
+  --admin-accent: #9a7f62;
+  --admin-accent-deep: #7c644e;
+  --admin-shadow: 0 14px 34px rgba(85, 63, 43, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  min-height: 100%;
+  background: linear-gradient(160deg, #faf6f0 0%, #f3eee7 50%, #efe8de 100%);
+  color: var(--admin-text);
+  font-family: "Noto Serif SC", "Source Han Serif SC", "PingFang SC", "Microsoft YaHei", serif;
+  font-size: 15px;
+}
+
+.el-card {
+  border-radius: 16px;
+  border: 1px solid var(--admin-line);
+  background: var(--admin-glass);
+  box-shadow: var(--admin-shadow);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.el-button {
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--admin-accent);
+  --el-button-border-color: var(--admin-accent);
+  --el-button-hover-bg-color: var(--admin-accent-deep);
+  --el-button-hover-border-color: var(--admin-accent-deep);
+}
+
+.el-table {
+  --el-table-border-color: rgba(126, 105, 82, 0.16);
+  --el-table-header-bg-color: rgba(253, 247, 239, 0.84);
+  --el-table-row-hover-bg-color: rgba(247, 237, 225, 0.46);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px rgba(120, 98, 76, 0.09) inset !important;
+}

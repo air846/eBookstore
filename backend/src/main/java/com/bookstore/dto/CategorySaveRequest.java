@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
 @Data
+// 分类保存请求参数
 public class CategorySaveRequest {
 
     @NotBlank(message = "分类名不能为空")

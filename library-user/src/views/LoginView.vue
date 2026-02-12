@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 登录页面：账号登录与跳转
 import { reactive } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -19,7 +20,7 @@ async function submit() {
     ElMessage.success("登录成功");
     router.push("/");
   } catch {
-    // 错误提示由 request 拦截器统一处理，这里吞掉异常避免控制台未处理告警。
+    // error message handled by request interceptor
   } finally {
     loading.value = false;
   }
@@ -29,7 +30,8 @@ async function submit() {
 <template>
   <div class="auth-page">
     <el-card class="card">
-      <template #header>用户登录</template>
+      <h1 class="title">欢迎回来</h1>
+      <p class="subtitle">登录后继续你的沉浸式阅读旅程</p>
       <el-form label-position="top">
         <el-form-item label="用户名">
           <el-input v-model="form.username" />
@@ -49,19 +51,35 @@ async function submit() {
 
 <style scoped>
 .auth-page {
-  min-height: 100vh;
+  min-height: calc(100vh - 160px);
   display: grid;
   place-items: center;
-  background: #f3f4f6;
+  padding: 20px 12px 30px;
 }
+
 .card {
-  width: 420px;
+  width: min(460px, 100%);
+  padding: 8px 4px;
 }
+
+.title {
+  margin: 2px 0 6px;
+  font-size: 28px;
+  font-weight: 600;
+}
+
+.subtitle {
+  margin: 0 0 18px;
+  color: var(--text-muted);
+}
+
 .w-full {
   width: 100%;
+  margin-top: 4px;
 }
+
 .tip {
-  margin-top: 12px;
+  margin-top: 14px;
   text-align: right;
 }
 </style>

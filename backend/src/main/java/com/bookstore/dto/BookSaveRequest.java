@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
+// 书籍新增/编辑请求参数
 public class BookSaveRequest {
 
     @NotBlank(message = "书名不能为空")
@@ -22,11 +23,10 @@ public class BookSaveRequest {
     private String coverUrl;
     private String description;
 
-    @NotBlank(message = "文件地址不能为空")
     private String fileUrl;
 
     @NotBlank(message = "文件类型不能为空")
     private String fileType;
 
-    private Integer status = 1;
+    private Integer status = 0;
 }

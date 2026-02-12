@@ -3,8 +3,10 @@ package com.bookstore.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.bookstore.dto.BookQueryRequest;
 import com.bookstore.dto.BookSaveRequest;
+import com.bookstore.dto.ChapterSaveRequest;
 import com.bookstore.dto.HistorySaveRequest;
 import com.bookstore.entity.Book;
+import com.bookstore.entity.BookChapter;
 import com.bookstore.entity.ReadHistory;
 
 import java.util.List;
@@ -19,6 +21,8 @@ public interface BookService {
 
     void favorite(Long userId, Long bookId);
 
+    void unfavorite(Long userId, Long bookId);
+
     List<Book> favoriteList(Long userId);
 
     void saveHistory(Long userId, HistorySaveRequest request);
@@ -32,4 +36,12 @@ public interface BookService {
     void updateStatus(Long id, Integer status);
 
     void delete(Long id);
+
+    List<BookChapter> listChapters(Long bookId);
+
+    void createChapter(Long bookId, ChapterSaveRequest request);
+
+    void updateChapter(Long bookId, Long chapterId, ChapterSaveRequest request);
+
+    void deleteChapter(Long bookId, Long chapterId);
 }

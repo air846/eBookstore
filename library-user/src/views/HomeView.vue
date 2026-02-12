@@ -1,4 +1,5 @@
 <script setup lang="ts">
+// 首页：轮播与推荐入口
 import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import request from "../utils/request";
@@ -28,69 +29,107 @@ onMounted(loadData);
 </script>
 
 <template>
-  <div v-loading="loading" class="home">
-    <el-carousel v-if="carouselList.length" height="260px">
+  <div v-loading="loading" class="page-shell home">
+    <section class="hero el-card">
+      <h1 class="page-title">在温润留白中，回归专注阅读</h1>
+      <p class="page-subtitle">精选电子书 · 极简阅读器 · 章节化沉浸体验</p>
+    </section>
+
+    <el-carousel v-if="carouselList.length" height="320px" class="hero-carousel">
       <el-carousel-item v-for="item in carouselList" :key="item.id">
         <img :src="item.imageUrl" class="banner" />
       </el-carousel-item>
     </el-carousel>
 
-    <el-card class="section">
-      <template #header>热门书籍</template>
-      <el-row :gutter="16">
-        <el-col v-for="item in hotBooks" :key="item.id" :span="6">
-          <el-card shadow="hover" class="book" @click="router.push(`/book/${item.id}`)">
+    <section class="section el-card">
+      <h2 class="section-title">热门书籍</h2>
+      <el-row :gutter="20">
+        <el-col v-for="item in hotBooks" :key="item.id" :xs="24" :sm="12" :md="6">
+          <article class="book" @click="router.push(`/book/${item.id}`)">
             <img :src="item.coverUrl" class="cover" />
             <div class="title">{{ item.title }}</div>
             <div class="meta">{{ item.author }}</div>
-          </el-card>
+          </article>
         </el-col>
       </el-row>
-    </el-card>
+    </section>
 
-    <el-card class="section">
-      <template #header>新书上架</template>
-      <el-row :gutter="16">
-        <el-col v-for="item in newBooks" :key="item.id" :span="6">
-          <el-card shadow="hover" class="book" @click="router.push(`/book/${item.id}`)">
+    <section class="section el-card">
+      <h2 class="section-title">新书上架</h2>
+      <el-row :gutter="20">
+        <el-col v-for="item in newBooks" :key="item.id" :xs="24" :sm="12" :md="6">
+          <article class="book" @click="router.push(`/book/${item.id}`)">
             <img :src="item.coverUrl" class="cover" />
             <div class="title">{{ item.title }}</div>
             <div class="meta">{{ item.author }}</div>
-          </el-card>
+          </article>
         </el-col>
       </el-row>
-    </el-card>
+    </section>
   </div>
 </template>
 
 <style scoped>
 .home {
   display: grid;
-  gap: 16px;
+  gap: 24px;
 }
+
+.hero {
+  padding: 30px 34px;
+}
+
+.hero-carousel {
+  border-radius: 18px;
+  overflow: hidden;
+  box-shadow: var(--shadow-light);
+}
+
 .banner {
   width: 100%;
-  height: 260px;
+  height: 320px;
   object-fit: cover;
 }
+
 .section {
-  margin-top: 12px;
+  padding: 22px 24px 6px;
 }
-.book {
-  cursor: pointer;
-}
-.cover {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-.title {
-  margin-top: 8px;
+
+.section-title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  line-height: 1.3;
   font-weight: 600;
 }
+
+.book {
+  cursor: pointer;
+  margin-bottom: 18px;
+  transition: transform 0.22s ease, box-shadow 0.22s ease;
+}
+
+.book:hover {
+  transform: translateY(-3px);
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+  box-shadow: var(--shadow-light);
+}
+
+.title {
+  margin-top: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
 .meta {
-  color: #6b7280;
-  font-size: 12px;
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 </style>

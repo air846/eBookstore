@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
+// 注册请求参数
 public class RegisterRequest {
 
     @NotBlank(message = "用户名不能为空")

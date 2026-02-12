@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
+// 认证服务：注册、登录与令牌生成
 public class AuthServiceImpl implements AuthService {
 
     private final UserMapper userMapper;

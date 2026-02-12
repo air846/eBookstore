@@ -1,10 +1,23 @@
 <script setup lang="ts">
+// 书库列表：分类筛选、搜索与分页
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import request from "../utils/request";
 
+interface CategoryNode {
+  id: number;
+  name: string;
+  children?: CategoryNode[];
+}
+
+interface CategoryOption {
+  id: number;
+  name: string;
+  level: number;
+}
+
 const router = useRouter();
-const categories = ref<any[]>([]);
+const flatCategories = ref<CategoryOption[]>([]);
 const books = ref<any[]>([]);
 const total = ref(0);
 const loading = ref(false);
@@ -15,9 +28,21 @@ const query = reactive({
   categoryId: undefined as number | undefined
 });
 
+function flattenCategoryTree(nodes: CategoryNode[], level = 0): CategoryOption[] {
+  return nodes.flatMap((item) => {
+    const current: CategoryOption = {
+      id: item.id,
+      name: item.name,
+      level
+    };
+    const children = Array.isArray(item.children) ? flattenCategoryTree(item.children, level + 1) : [];
+    return [current, ...children];
+  });
+}
+
 async function loadCategories() {
   const res = await request.get("/category/tree");
-  categories.value = res.data;
+  flatCategories.value = flattenCategoryTree(Array.isArray(res.data) ? res.data : []);
 }
 
 async function loadBooks() {
@@ -38,75 +63,128 @@ onMounted(async () => {
 </script>
 
 <template>
-  <el-row :gutter="16">
-    <el-col :span="5">
-      <el-card>
-        <template #header>分类筛选</template>
-        <el-menu>
-          <el-menu-item @click="query.categoryId = undefined; query.page = 1; loadBooks()">全部</el-menu-item>
-          <el-menu-item
-            v-for="item in categories"
-            :key="item.id"
-            @click="query.categoryId = item.id; query.page = 1; loadBooks()"
-          >
-            {{ item.name }}
-          </el-menu-item>
-        </el-menu>
-      </el-card>
-    </el-col>
-    <el-col :span="19">
-      <el-card>
-        <el-space>
-          <el-input v-model="query.keyword" placeholder="输入书名或作者" clearable />
-          <el-button type="primary" @click="query.page = 1; loadBooks()">搜索</el-button>
-        </el-space>
-      </el-card>
-      <el-row v-loading="loading" :gutter="16" class="grid">
-        <el-col v-for="book in books" :key="book.id" :span="8">
-          <el-card class="book-card" shadow="hover" @click="router.push(`/book/${book.id}`)">
-            <img :src="book.coverUrl" class="cover" />
-            <div class="title">{{ book.title }}</div>
-            <div class="meta">{{ book.author }}</div>
-          </el-card>
-        </el-col>
-      </el-row>
-      <div class="pager">
-        <el-pagination
-          v-model:current-page="query.page"
-          v-model:page-size="query.size"
-          layout="total, prev, pager, next"
-          :total="total"
-          @current-change="loadBooks"
-        />
-      </div>
-    </el-col>
-  </el-row>
+  <div class="page-shell">
+    <h1 class="page-title">书库检索</h1>
+    <p class="page-subtitle">按分类与关键词快速筛选你想读的书。</p>
+
+    <el-row :gutter="20">
+      <el-col :xs="24" :md="6">
+        <el-card class="filter-card">
+          <h3 class="panel-title">分类筛选</h3>
+          <el-menu class="menu">
+            <el-menu-item @click="query.categoryId = undefined; query.page = 1; loadBooks()">全部</el-menu-item>
+            <el-menu-item
+              v-for="item in flatCategories"
+              :key="item.id"
+              @click="query.categoryId = item.id; query.page = 1; loadBooks()"
+            >
+              <span class="category-name" :style="{ paddingLeft: `${item.level * 14}px` }">
+                {{ item.level > 0 ? "└ " : "" }}{{ item.name }}
+              </span>
+            </el-menu-item>
+          </el-menu>
+        </el-card>
+      </el-col>
+
+      <el-col :xs="24" :md="18">
+        <el-card class="search-card">
+          <el-space wrap>
+            <el-input v-model="query.keyword" placeholder="输入书名或作者" clearable style="width: 280px" />
+            <el-button type="primary" @click="query.page = 1; loadBooks()">搜索</el-button>
+          </el-space>
+        </el-card>
+
+        <el-row v-loading="loading" :gutter="20" class="grid">
+          <el-col v-for="book in books" :key="book.id" :xs="24" :sm="12" :md="8">
+            <el-card class="book-card" @click="router.push(`/book/${book.id}`)">
+              <img :src="book.coverUrl" class="cover" />
+              <div class="title">{{ book.title }}</div>
+              <div class="meta">{{ book.author }}</div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <div class="pager">
+          <el-pagination
+            v-model:current-page="query.page"
+            v-model:page-size="query.size"
+            layout="total, prev, pager, next"
+            :total="total"
+            @current-change="loadBooks"
+          />
+        </div>
+      </el-col>
+    </el-row>
+  </div>
 </template>
 
 <style scoped>
-.grid {
-  margin-top: 12px;
+.filter-card,
+.search-card {
+  padding: 8px;
 }
-.book-card {
-  margin-bottom: 12px;
-  cursor: pointer;
-}
-.cover {
-  width: 100%;
-  height: 180px;
-  object-fit: cover;
-}
-.title {
-  margin-top: 8px;
+
+.panel-title {
+  margin: 6px 0 10px;
+  font-size: 16px;
   font-weight: 600;
 }
-.meta {
-  font-size: 12px;
-  color: #6b7280;
+
+.menu {
+  border-right: none;
+  background: transparent;
 }
+
+.menu :deep(.el-menu-item) {
+  border-radius: 8px;
+  margin-bottom: 4px;
+}
+
+.category-name {
+  display: inline-block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+.grid {
+  margin-top: 18px;
+}
+
+.book-card {
+  cursor: pointer;
+  margin-bottom: 18px;
+  border-radius: 14px;
+  transition: transform 0.2s ease;
+}
+
+.book-card:hover {
+  transform: translateY(-2px);
+}
+
+.cover {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 10px;
+}
+
+.title {
+  margin-top: 10px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.meta {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
 .pager {
   display: flex;
   justify-content: flex-end;
-  margin: 12px 0;
+  margin: 10px 0 0;
 }
 </style>

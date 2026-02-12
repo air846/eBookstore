@@ -22,6 +22,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+// 管理端业务实现：概览与用户/书籍管理
 public class AdminServiceImpl implements AdminService {
 
     private final UserMapper userMapper;

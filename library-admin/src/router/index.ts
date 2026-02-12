@@ -17,6 +17,7 @@ const router = createRouter({
         { path: "books", component: () => import("../views/BookManageView.vue") },
         { path: "categories", component: () => import("../views/CategoryManageView.vue") },
         { path: "users", component: () => import("../views/UserManageView.vue") },
+        { path: "interactions", component: () => import("../views/InteractionManageView.vue") },
         { path: "system", component: () => import("../views/SystemSettingView.vue") }
       ]
     }

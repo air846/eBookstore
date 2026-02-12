@@ -6,6 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
+// 用户状态更新请求参数
 public class UserStatusUpdateRequest {
 
     @NotNull(message = "状态不能为空")

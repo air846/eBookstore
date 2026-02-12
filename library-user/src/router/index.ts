@@ -18,6 +18,7 @@ const router = createRouter({
       children: [
         { path: "", component: () => import("../views/HomeView.vue") },
         { path: "books", component: () => import("../views/BookListView.vue") },
+        { path: "bookshelf", component: () => import("../views/BookshelfView.vue"), meta: { requiresAuth: true } },
         { path: "book/:id", component: () => import("../views/BookDetailView.vue") },
         { path: "reader/:id", component: () => import("../views/ReaderView.vue"), meta: { requiresAuth: true } },
         { path: "profile", component: () => import("../views/ProfileView.vue"), meta: { requiresAuth: true } }
