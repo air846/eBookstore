@@ -183,6 +183,12 @@ async function removeBook(row: BookRow) {
   await loadBooks();
 }
 
+async function importTxtChapters(row: BookRow) {
+  await ElMessageBox.confirm(`将按 TXT 文件重新生成《${row.title}》章节，原章节会被覆盖，是否继续？`, "提示", { type: "warning" });
+  const res = await request.post(`/admin/book/${row.id}/chapters/import-txt`);
+  ElMessage.success(`导入成功，共 ${res.data || 0} 章`);
+}
+
 function resetChapterForm() {
   Object.assign(chapterForm, {
     title: "",
@@ -298,10 +304,11 @@ onMounted(async () => {
             <el-tag :type="row.status === 1 ? 'success' : 'info'">{{ row.status === 1 ? "上架" : "下架" }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="350">
+        <el-table-column label="操作" width="430">
           <template #default="{ row }">
             <el-space>
               <el-button size="small" type="primary" plain @click="openChapterManage(row)">章节</el-button>
+              <el-button v-if="row.fileType === 'TXT'" size="small" type="warning" plain @click="importTxtChapters(row)">TXT入库</el-button>
               <el-button size="small" @click="openEdit(row)">编辑</el-button>
               <el-button size="small" @click="toggleStatus(row)">{{ row.status === 1 ? "下架" : "上架" }}</el-button>
               <el-button size="small" type="danger" @click="removeBook(row)">删除</el-button>

@@ -1,6 +1,7 @@
 package com.bookstore.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.bookstore.common.BizException;
 import com.bookstore.entity.BookUrge;
 import com.bookstore.mapper.BookUrgeMapper;
 import com.bookstore.service.UrgeService;
@@ -24,7 +25,7 @@ public class UrgeServiceImpl implements UrgeService {
                 .eq(BookUrge::getBookId, bookId)
                 .last("limit 1"));
         if (exists != null) {
-            return;
+            throw new BizException("你已经催更过这本书了");
         }
         BookUrge urge = new BookUrge();
         urge.setBookId(bookId);

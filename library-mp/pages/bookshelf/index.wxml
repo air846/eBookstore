@@ -1,0 +1,17 @@
+<view class="container">
+  <view class="card" wx:if="{{books.length}}">
+    <view class="book-row" wx:for="{{books}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <image class="book-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+      <view class="book-meta">
+        <view class="book-title">{{item.title}}</view>
+        <view class="book-author">{{item.author}}</view>
+        <view class="action-row">
+          <button size="mini" type="primary" data-id="{{item.id}}" catchtap="goRead">继续阅读</button>
+        </view>
+      </view>
+    </view>
+  </view>
+  <view class="card sub" wx:if="{{loading}}">加载中...</view>
+  <view class="card error" wx:if="{{errorText}}" bindtap="retryLoad">{{errorText}}</view>
+  <view class="card sub" wx:if="{{!loading && !errorText && !books.length}}">你还没有收藏图书</view>
+</view>

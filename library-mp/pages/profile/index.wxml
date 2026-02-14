@@ -1,0 +1,26 @@
+<view class="container">
+  <view class="card">
+    <view class="title">{{user.nickname || user.username || '未登录'}}</view>
+    <view class="sub">{{user.email || ''}}</view>
+  </view>
+
+  <view class="card">
+    <view class="title-sm">最近阅读</view>
+    <view class="sub" wx:if="{{loading}}">加载中...</view>
+    <view class="error" wx:if="{{errorText}}">{{errorText}}</view>
+    <view wx:if="{{!loading && !errorText && history.length}}">
+      <view class="history-item" wx:for="{{history}}" wx:key="id">
+        <view>{{item.chapter || '未命名章节'}}</view>
+        <view class="sub">{{item.progress || '-'}}</view>
+        <view class="sub" wx:if="{{item.readTimeText}}">阅读时间：{{item.readTimeText}}</view>
+        <view class="history-actions">
+          <button size="mini" data-bookid="{{item.bookId}}" bindtap="goHistoryDetail" disabled="{{!item.bookId}}">详情</button>
+          <button size="mini" type="primary" data-bookid="{{item.bookId}}" bindtap="goHistoryRead" disabled="{{!item.bookId}}">继续阅读</button>
+        </view>
+      </view>
+    </view>
+    <view class="sub" wx:if="{{!loading && !errorText && !history.length}}">暂无阅读历史</view>
+  </view>
+
+  <button type="warn" bindtap="handleLogout">退出登录</button>
+</view>

@@ -22,3 +22,8 @@ jwt:
   # base64("ebookstore-secret-key-2026-very-strong-32bytes")
   secret: ZWJvb2tzdG9yZS1zZWNyZXQta2V5LTIwMjYtdmVyeS1zdHJvbmctMzJieXRlcw==
   expire-seconds: 86400
+
+wechat:
+  miniapp:
+    appid: ${WECHAT_MINIAPP_APPID:wx9f66ee6300d7f5a8}
+    secret: ${WECHAT_MINIAPP_SECRET:9d7558950827d1b7b8b9adbce6298e98}

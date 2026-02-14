@@ -8,9 +8,11 @@ interface LoginForm {
 }
 
 interface UserInfo {
-  userId: number;
+  id?: number;
+  userId?: number;
   username: string;
   nickname: string;
+  email?: string;
   role: number;
   avatar?: string;
 }
@@ -48,5 +50,9 @@ export const useAuthStore = defineStore("auth", () => {
     setToken("");
   }
 
-  return { token, user, isLogin, login, fetchUserInfo, logout };
+  function setUserInfo(data: UserInfo | null) {
+    user.value = data;
+  }
+
+  return { token, user, isLogin, login, fetchUserInfo, logout, setUserInfo };
 });

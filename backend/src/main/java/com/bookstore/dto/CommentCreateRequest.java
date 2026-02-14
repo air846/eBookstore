@@ -10,6 +10,9 @@ public class CommentCreateRequest {
     @NotNull(message = "paragraph index can not be empty")
     private Integer paragraphIndex;
 
+    // For TXT virtual chapters, backend stores negative chapter key by this index.
+    private Integer virtualChapterIndex;
+
     @NotBlank(message = "comment content can not be empty")
     private String content;
 

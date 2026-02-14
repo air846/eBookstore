@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // 阅读器页面：章节切换、段落排版、段评与催更
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onMounted, reactive, ref } from "vue";
 import { useRoute } from "vue-router";
+import { ElMessage } from "element-plus";
 import request from "../utils/request";
 
 interface ChapterRow {
@@ -14,6 +15,7 @@ interface ChapterRow {
 
 const route = useRoute();
 const loading = ref(false);
+const contentRef = ref<HTMLElement | null>(null);
 const fileUrl = ref("");
 const chapters = ref<ChapterRow[]>([]);
 const currentIndex = ref(0);
@@ -72,6 +74,71 @@ function splitParagraphs(content: string): string[] {
   return merged.length ? merged : [normalized];
 }
 
+function buildTxtChapters(rawContent: string, bookId: number): ChapterRow[] {
+  const content = rawContent.replace(/\r\n/g, "\n").trim();
+  if (!content) return [];
+
+  const lines = content.split("\n");
+  const titlePattern = /^(第[0-9一二三四五六七八九十百千万零两]+[章节卷篇部回].*|(?:chapter|chap\.?)\s*\d+.*)$/i;
+  const titleIndexes: number[] = [];
+
+  lines.forEach((line, idx) => {
+    const text = line.trim();
+    if (!text || text.length > 60) return;
+    if (titlePattern.test(text)) {
+      titleIndexes.push(idx);
+    }
+  });
+
+  const chapters: ChapterRow[] = [];
+  const buildChapter = (title: string, body: string) => {
+    const normalizedBody = body.trim();
+    if (!normalizedBody) return;
+    chapters.push({
+      id: -(chapters.length + 1),
+      bookId,
+      title,
+      content: normalizedBody,
+      sortOrder: chapters.length + 1
+    });
+  };
+
+  if (titleIndexes.length > 0) {
+    const firstTitleIndex = titleIndexes[0];
+    const preface = lines.slice(0, firstTitleIndex).join("\n").trim();
+    if (preface) {
+      buildChapter("前言", preface);
+    }
+    for (let i = 0; i < titleIndexes.length; i += 1) {
+      const start = titleIndexes[i];
+      const end = i === titleIndexes.length - 1 ? lines.length : titleIndexes[i + 1];
+      const title = lines[start].trim();
+      const body = lines.slice(start + 1, end).join("\n");
+      buildChapter(title || `第${i + 1}章`, body);
+    }
+  } else {
+    // 没有明显章节标题时，按长度兜底切分，避免整本书只有一个章节。
+    const maxChars = 8000;
+    let buffer = "";
+    let index = 1;
+    const paragraphs = content.split(/\n{2,}/).map((item) => item.trim()).filter(Boolean);
+    paragraphs.forEach((paragraph) => {
+      if ((buffer + "\n\n" + paragraph).length > maxChars && buffer) {
+        buildChapter(`第${index}节`, buffer);
+        index += 1;
+        buffer = paragraph;
+      } else {
+        buffer = buffer ? `${buffer}\n\n${paragraph}` : paragraph;
+      }
+    });
+    if (buffer) {
+      buildChapter(`第${index}节`, buffer);
+    }
+  }
+
+  return chapters;
+}
+
 async function saveHistory() {
   const chapterName = currentChapter.value?.title || "开始阅读";
   await request.post("/book/history", {
@@ -90,9 +157,31 @@ async function loadReadInfo() {
     ]);
     fileUrl.value = readRes.data || "";
     chapters.value = Array.isArray(chapterRes.data) ? chapterRes.data : [];
+    if (chapters.value.length === 0 && fileUrl.value && /\.txt$/i.test(String(fileUrl.value).trim().replace(/^\"|\"$/g, ""))) {
+      const textRes = await request.get(`/book/read-text/${route.params.id}`);
+      const content = (textRes.data || "").toString();
+      if (content.trim()) {
+        const parsed = buildTxtChapters(content, Number(route.params.id));
+        chapters.value = parsed.length
+          ? parsed
+          : [
+              {
+                id: -1,
+                bookId: Number(route.params.id),
+                title: "全文",
+                content,
+                sortOrder: 1
+              }
+            ];
+      }
+    }
     if (route.query.chapterId) {
       const chapterId = Number(route.query.chapterId);
       const idx = chapters.value.findIndex((item) => item.id === chapterId);
+      currentIndex.value = idx >= 0 ? idx : 0;
+    } else if (route.query.chapter) {
+      const chapterText = String(route.query.chapter).trim();
+      const idx = chapters.value.findIndex((item) => item.title === chapterText);
       currentIndex.value = idx >= 0 ? idx : 0;
     } else {
       currentIndex.value = 0;
@@ -114,6 +203,8 @@ async function selectChapter(index: number) {
   if (index < 0 || index >= chapters.value.length || index === currentIndex.value) return;
   currentIndex.value = index;
   chapterDrawerVisible.value = false;
+  await nextTick();
+  resetReadPosition();
   await saveHistory();
   await loadCommentCounts();
 }
@@ -127,7 +218,7 @@ async function nextChapter() {
 }
 
 async function openComments(index: number) {
-  if (!currentChapter.value) return;
+  if (!currentChapter.value || currentChapter.value.id <= 0) return;
   selectedParagraphIndex.value = index;
   commentDrawerVisible.value = true;
   replyTarget.value = null;
@@ -135,7 +226,7 @@ async function openComments(index: number) {
 }
 
 async function loadComments() {
-  if (!currentChapter.value || selectedParagraphIndex.value === null) return;
+  if (!currentChapter.value || currentChapter.value.id <= 0 || selectedParagraphIndex.value === null) return;
   commentLoading.value = true;
   try {
     const res = await request.get(`/book/${route.params.id}/chapter/${currentChapter.value.id}/comments`, {
@@ -148,7 +239,7 @@ async function loadComments() {
 }
 
 async function loadCommentCounts() {
-  if (!currentChapter.value) {
+  if (!currentChapter.value || currentChapter.value.id <= 0) {
     commentCounts.value = {};
     return;
   }
@@ -165,7 +256,7 @@ async function loadCommentCounts() {
 }
 
 async function submitComment() {
-  if (!currentChapter.value || selectedParagraphIndex.value === null) return;
+  if (!currentChapter.value || currentChapter.value.id <= 0 || selectedParagraphIndex.value === null) return;
   const content = commentInput.value.trim();
   if (!content) return;
   commentSubmitting.value = true;
@@ -209,6 +300,12 @@ function cancelReply() {
 
 async function urge() {
   await request.post(`/book/${route.params.id}/urge`);
+  ElMessage.success("催更成功，已通知管理员");
+}
+
+function resetReadPosition() {
+  contentRef.value?.scrollTo({ top: 0, behavior: "auto" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 }
 
 onMounted(loadReadInfo);
@@ -247,7 +344,7 @@ onMounted(loadReadInfo);
       </el-space>
     </div>
 
-    <main :class="['content', `width-${lineWidthMode}`]" :style="{ fontSize: `${setting.fontSize}px` }">
+    <main ref="contentRef" :class="['content', `width-${lineWidthMode}`]" :style="{ fontSize: `${setting.fontSize}px` }">
       <template v-if="currentChapter">
         <div class="chapter-nav chapter-nav-top">
           <el-button size="small" :disabled="currentIndex <= 0" @click="prevChapter">上一章</el-button>

@@ -12,4 +12,6 @@ public class DashboardStatsVO {
     private Long totalBooks;
     private Long todayVisits;
     private List<Book> hotBooks;
+    private List<DailyVisitPointVO> dailyVisitTrend;
+    private List<PreferenceStatVO> categoryBookStats;
 }

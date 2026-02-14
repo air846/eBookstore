@@ -13,13 +13,14 @@ const newBooks = ref<any[]>([]);
 async function loadData() {
   loading.value = true;
   try {
-    const [carouselRes, booksRes] = await Promise.all([
+    const [carouselRes, hotRes, newRes] = await Promise.all([
       request.get("/carousel/list"),
-      request.get("/book/list", { params: { page: 1, size: 8, sortBy: "visit_count", order: "desc" } })
+      request.get("/book/list", { params: { page: 1, size: 4, sortBy: "visit_count", order: "desc" } }),
+      request.get("/book/list", { params: { page: 1, size: 4, sortBy: "create_time", order: "desc" } })
     ]);
     carouselList.value = carouselRes.data;
-    hotBooks.value = booksRes.data.records.slice(0, 4);
-    newBooks.value = booksRes.data.records.slice(4);
+    hotBooks.value = hotRes.data.records || [];
+    newBooks.value = newRes.data.records || [];
   } finally {
     loading.value = false;
   }

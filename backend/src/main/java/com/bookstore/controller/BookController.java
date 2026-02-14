@@ -51,6 +51,11 @@ public class BookController {
         return ApiResponse.success(bookService.readBook(UserContext.getUserId(), request.getRemoteAddr(), id));
     }
 
+    @GetMapping("/read-text/{id}")
+    public ApiResponse<String> readText(@PathVariable Long id) {
+        return ApiResponse.success(bookService.readTxtContent(id));
+    }
+
     @GetMapping("/{id}/chapters")
     public ApiResponse<List<BookChapter>> chapters(@PathVariable Long id) {
         return ApiResponse.success(bookService.listChapters(id));
@@ -59,15 +64,17 @@ public class BookController {
     @GetMapping("/{bookId}/chapter/{chapterId}/comments")
     public ApiResponse<?> listComments(@PathVariable Long bookId,
                                        @PathVariable Long chapterId,
+                                       @RequestParam(required = false) Integer virtualChapterIndex,
                                        @RequestParam Integer paragraphIndex,
                                        @RequestParam(required = false, defaultValue = "time") String sortBy) {
-        return ApiResponse.success(commentService.listComments(UserContext.getUserId(), bookId, chapterId, paragraphIndex, sortBy));
+        return ApiResponse.success(commentService.listComments(UserContext.getUserId(), bookId, chapterId, virtualChapterIndex, paragraphIndex, sortBy));
     }
 
     @GetMapping("/{bookId}/chapter/{chapterId}/comment-counts")
     public ApiResponse<?> commentCounts(@PathVariable Long bookId,
-                                        @PathVariable Long chapterId) {
-        return ApiResponse.success(commentService.commentCounts(bookId, chapterId));
+                                        @PathVariable Long chapterId,
+                                        @RequestParam(required = false) Integer virtualChapterIndex) {
+        return ApiResponse.success(commentService.commentCounts(bookId, chapterId, virtualChapterIndex));
     }
 
     @PostMapping("/{bookId}/chapter/{chapterId}/comments")
@@ -152,5 +159,10 @@ public class BookController {
     @GetMapping("/history/list")
     public ApiResponse<?> historyList() {
         return ApiResponse.success(bookService.historyList(UserContext.getUserId()));
+    }
+
+    @GetMapping("/history/preference")
+    public ApiResponse<?> preferenceStats() {
+        return ApiResponse.success(bookService.preferenceStats(UserContext.getUserId()));
     }
 }

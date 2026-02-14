@@ -18,6 +18,7 @@ const router = useRouter();
 const loading = ref(false);
 const keyword = ref("");
 const items = ref<BookItem[]>([]);
+const lastChapterMap = ref<Record<number, string>>({});
 
 const filteredItems = computed(() => {
   const key = keyword.value.trim().toLowerCase();
@@ -32,8 +33,20 @@ const filteredItems = computed(() => {
 async function loadFavorites() {
   loading.value = true;
   try {
-    const res = await request.get("/book/favorite/list");
-    items.value = Array.isArray(res.data) ? res.data : [];
+    const [favoriteRes, historyRes] = await Promise.all([
+      request.get("/book/favorite/list"),
+      request.get("/book/history/list")
+    ]);
+    items.value = Array.isArray(favoriteRes.data) ? favoriteRes.data : [];
+    const historyList = Array.isArray(historyRes.data) ? historyRes.data : [];
+    const mapping: Record<number, string> = {};
+    historyList.forEach((item: any) => {
+      const bookId = Number(item.bookId);
+      if (!Number.isNaN(bookId) && item.chapter && !mapping[bookId]) {
+        mapping[bookId] = item.chapter;
+      }
+    });
+    lastChapterMap.value = mapping;
   } finally {
     loading.value = false;
   }
@@ -44,6 +57,11 @@ function openDetail(book: BookItem) {
 }
 
 function openReader(book: BookItem) {
+  const chapter = lastChapterMap.value[book.id];
+  if (chapter) {
+    router.push({ path: `/reader/${book.id}`, query: { chapter } });
+    return;
+  }
   router.push(`/reader/${book.id}`);
 }
 

@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/login/index",
+    "pages/home/index",
+    "pages/books/index",
+    "pages/book-detail/index",
+    "pages/reader/index",
+    "pages/bookshelf/index",
+    "pages/profile/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "eBookstore",
+    "navigationBarBackgroundColor": "#f7f1e8",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f3e8da"
+  },
+  "tabBar": {
+    "color": "#8f7560",
+    "selectedColor": "#7f5536",
+    "backgroundColor": "#f7f1e8",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/index",
+        "text": "首页"
+      },
+      {
+        "pagePath": "pages/books/index",
+        "text": "书库"
+      },
+      {
+        "pagePath": "pages/bookshelf/index",
+        "text": "书架"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的"
+      }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

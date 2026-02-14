@@ -1,0 +1,37 @@
+<view class="container">
+  <swiper class="banner" indicator-dots autoplay circular>
+    <block wx:for="{{carouselList}}" wx:key="id">
+      <swiper-item>
+        <image class="banner-image" src="{{item.imageUrl}}" mode="aspectFill"></image>
+      </swiper-item>
+    </block>
+  </swiper>
+
+  <view class="card">
+    <view class="section-head">
+      <text class="title-sm">热门图书</text>
+      <text class="sub">高人气精选</text>
+    </view>
+    <view class="book-list">
+      <view class="book-item" wx:for="{{hotBooks}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+        <image class="book-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+        <view class="book-title">{{item.title}}</view>
+        <view class="sub">{{item.author}}</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="section-head">
+      <text class="title-sm">最新上架</text>
+      <text class="sub">新书速递</text>
+    </view>
+    <view class="book-list">
+      <view class="book-item" wx:for="{{newBooks}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+        <image class="book-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+        <view class="book-title">{{item.title}}</view>
+        <view class="sub">{{item.author}}</view>
+      </view>
+    </view>
+  </view>
+</view>

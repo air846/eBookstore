@@ -1,0 +1,20 @@
+.title-sm {
+  font-size: 32rpx;
+  font-weight: 600;
+  margin-bottom: 14rpx;
+}
+
+.history-item {
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid rgba(121, 91, 66, 0.14);
+}
+
+.history-actions {
+  margin-top: 10rpx;
+  display: flex;
+  gap: 12rpx;
+}
+
+.error {
+  color: #b94131;
+}

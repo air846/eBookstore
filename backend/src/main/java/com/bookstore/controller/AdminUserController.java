@@ -1,6 +1,7 @@
 package com.bookstore.controller;
 
 import com.bookstore.common.ApiResponse;
+import com.bookstore.dto.AdminResetPasswordRequest;
 import com.bookstore.dto.UserStatusUpdateRequest;
 import com.bookstore.service.AdminService;
 import jakarta.validation.Valid;
@@ -30,6 +31,12 @@ public class AdminUserController {
     @PutMapping("/{id}/status")
     public ApiResponse<Void> updateStatus(@PathVariable Long id, @Valid @RequestBody UserStatusUpdateRequest request) {
         adminService.updateUserStatus(id, request.getStatus());
+        return ApiResponse.success();
+    }
+
+    @PutMapping("/{id}/password/reset")
+    public ApiResponse<Void> resetPassword(@PathVariable Long id, @Valid @RequestBody AdminResetPasswordRequest request) {
+        adminService.resetUserPassword(id, request.getNewPassword());
         return ApiResponse.success();
     }
 }

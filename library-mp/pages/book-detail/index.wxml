@@ -1,0 +1,20 @@
+<view class="container">
+  <view class="card">
+    <view class="loading" wx:if="{{loading}}">加载中...</view>
+    <view class="error" wx:if="{{errorText}}" bindtap="reload">{{errorText}}</view>
+    <view class="book-head">
+      <image class="book-cover" src="{{detail.coverUrl}}" mode="aspectFill"></image>
+      <view class="book-meta">
+        <view class="title">{{detail.title}}</view>
+        <view class="sub">{{detail.author}}</view>
+        <view class="sub">{{detail.publisher}}</view>
+        <view class="sub">ISBN：{{detail.isbn || '-'}}</view>
+      </view>
+    </view>
+    <view class="desc">{{detail.description || '暂无简介'}}</view>
+    <view class="action-row">
+      <button size="mini" bindtap="toggleFavorite">{{favoriteText}}</button>
+      <button size="mini" type="primary" bindtap="goRead">开始阅读</button>
+    </view>
+  </view>
+</view>

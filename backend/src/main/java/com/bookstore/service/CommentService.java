@@ -11,9 +11,9 @@ import java.util.Map;
 
 public interface CommentService {
 
-    List<CommentVO> listComments(Long userId, Long bookId, Long chapterId, Integer paragraphIndex, String sortBy);
+    List<CommentVO> listComments(Long userId, Long bookId, Long chapterId, Integer virtualChapterIndex, Integer paragraphIndex, String sortBy);
 
-    Map<Integer, Long> commentCounts(Long bookId, Long chapterId);
+    Map<Integer, Long> commentCounts(Long bookId, Long chapterId, Integer virtualChapterIndex);
 
     void createComment(Long userId, Long bookId, Long chapterId, CommentCreateRequest request);
 

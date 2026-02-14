@@ -12,6 +12,9 @@ public class CommentVO {
     private Long chapterId;
     private Integer paragraphIndex;
     private Long userId;
+    private String username;
+    private String nickname;
+    private String avatar;
     private Long parentId;
     private String content;
     private Integer likeCount;

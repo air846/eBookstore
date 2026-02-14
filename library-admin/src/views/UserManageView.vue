@@ -12,6 +12,12 @@ const query = reactive({
   size: 10,
   keyword: ""
 });
+const resetDialogVisible = ref(false);
+const resetForm = reactive({
+  id: 0,
+  username: "",
+  newPassword: ""
+});
 
 async function loadUsers() {
   loading.value = true;
@@ -29,6 +35,19 @@ async function toggleStatus(row: any) {
   await request.put(`/admin/user/${row.id}/status`, { status: next });
   ElMessage.success("状态已更新");
   await loadUsers();
+}
+
+function openResetDialog(row: any) {
+  resetForm.id = row.id;
+  resetForm.username = row.username;
+  resetForm.newPassword = "";
+  resetDialogVisible.value = true;
+}
+
+async function resetPassword() {
+  await request.put(`/admin/user/${resetForm.id}/password/reset`, { newPassword: resetForm.newPassword });
+  ElMessage.success("密码已重置");
+  resetDialogVisible.value = false;
 }
 
 onMounted(loadUsers);
@@ -57,9 +76,10 @@ onMounted(loadUsers);
             <el-tag :type="row.status === 1 ? 'success' : 'danger'">{{ row.status === 1 ? "正常" : "禁用" }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="160">
+        <el-table-column label="操作" width="240">
           <template #default="{ row }">
             <el-button size="small" @click="toggleStatus(row)">{{ row.status === 1 ? "禁用" : "启用" }}</el-button>
+            <el-button size="small" type="warning" plain @click="openResetDialog(row)">重置密码</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -73,6 +93,21 @@ onMounted(loadUsers);
         />
       </div>
     </el-card>
+
+    <el-dialog v-model="resetDialogVisible" title="重置用户密码" width="420px">
+      <el-form label-width="90px">
+        <el-form-item label="用户名">
+          <el-input :model-value="resetForm.username" disabled />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="resetForm.newPassword" type="password" show-password />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="resetDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="resetPassword">确认重置</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 

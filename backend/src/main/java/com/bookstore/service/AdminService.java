@@ -11,4 +11,6 @@ public interface AdminService {
     IPage<User> pageUsers(long page, long size, String keyword);
 
     void updateUserStatus(Long id, Integer status);
+
+    void resetUserPassword(Long id, String newPassword);
 }

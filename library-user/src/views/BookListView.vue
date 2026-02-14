@@ -25,7 +25,9 @@ const query = reactive({
   page: 1,
   size: 12,
   keyword: "",
-  categoryId: undefined as number | undefined
+  categoryId: undefined as number | undefined,
+  sortBy: "create_time",
+  order: "desc"
 });
 
 function flattenCategoryTree(nodes: CategoryNode[], level = 0): CategoryOption[] {
@@ -90,6 +92,10 @@ onMounted(async () => {
         <el-card class="search-card">
           <el-space wrap>
             <el-input v-model="query.keyword" placeholder="输入书名或作者" clearable style="width: 280px" />
+            <el-select v-model="query.sortBy" style="width: 160px" @change="query.page = 1; loadBooks()">
+              <el-option label="最新上架" value="create_time" />
+              <el-option label="最多阅读" value="visit_count" />
+            </el-select>
             <el-button type="primary" @click="query.page = 1; loadBooks()">搜索</el-button>
           </el-space>
         </el-card>

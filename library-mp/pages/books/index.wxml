@@ -1,0 +1,29 @@
+<view class="container">
+  <view class="card">
+    <view class="search-row">
+      <input class="search" placeholder="搜索书名或作者" value="{{query.keyword}}" bindinput="onKeywordInput" confirm-type="search" bindconfirm="onSearchConfirm" />
+      <button class="search-btn" size="mini" bindtap="onSearchConfirm">搜索</button>
+    </view>
+    <scroll-view class="category-scroll" scroll-x>
+      <view class="chip {{query.categoryId === 0 ? 'active' : ''}}" data-id="0" bindtap="selectCategory">全部</view>
+      <view class="chip {{query.categoryId === item.id ? 'active' : ''}}" wx:for="{{categories}}" wx:key="id" data-id="{{item.id}}" bindtap="selectCategory">{{item.label}}</view>
+    </scroll-view>
+    <view class="sub">共 {{total}} 本</view>
+  </view>
+
+  <view class="card">
+    <view class="loading" wx:if="{{firstLoading}}">加载中...</view>
+    <view class="book-row" wx:for="{{books}}" wx:key="id" data-id="{{item.id}}" bindtap="goDetail">
+      <image class="book-cover" src="{{item.coverUrl}}" mode="aspectFill"></image>
+      <view class="book-meta">
+        <view class="book-title">{{item.title}}</view>
+        <view class="book-author">{{item.author}}</view>
+      </view>
+    </view>
+    <view class="empty" wx:if="{{!firstLoading && !books.length && !errorText}}">暂无数据</view>
+    <view class="error" wx:if="{{errorText}}" bindtap="reload">{{errorText}}</view>
+    <view class="loading" wx:if="{{loading && books.length}}">加载中...</view>
+    <view class="load-more" wx:if="{{!loading && hasMore && books.length}}" bindtap="loadMore">加载更多</view>
+    <view class="sub" wx:if="{{!loading && !hasMore && books.length}}">没有更多了</view>
+  </view>
+</view>

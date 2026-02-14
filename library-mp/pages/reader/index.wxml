@@ -1,0 +1,117 @@
+<view class="container reader {{darkMode ? 'dark' : ''}}">
+  <view class="card">
+    <view class="toolbar">
+      <picker class="picker-wrap" mode="selector" range="{{chapterTitles}}" value="{{currentIndex}}" bindchange="onChapterChange">
+        <view class="picker">章节：{{chapterTitles[currentIndex] || '暂无章节'}}</view>
+      </picker>
+      <button size="mini" bindtap="changeFontSize" data-action="dec">A-</button>
+      <button size="mini" bindtap="changeFontSize" data-action="inc">A+</button>
+      <button size="mini" bindtap="toggleTheme">{{darkMode ? '日间' : '夜间'}}</button>
+    </view>
+
+    <view class="mode-row">
+      <text class="sub">分段：</text>
+      <button size="mini" class="{{paragraphMode===1 ? 'mode-active' : ''}}" data-mode="1" bindtap="setParagraphMode">一段式</button>
+      <button size="mini" class="{{paragraphMode===2 ? 'mode-active' : ''}}" data-mode="2" bindtap="setParagraphMode">二段式</button>
+      <button size="mini" class="{{paragraphMode===3 ? 'mode-active' : ''}}" data-mode="3" bindtap="setParagraphMode">三段式</button>
+      <text class="sub progress">进度：{{progressText}}</text>
+    </view>
+    <view class="sub">长按段落可评论；有评论时段落结尾显示番茄气泡</view>
+
+    <view class="error" wx:if="{{errorText}}">{{errorText}}</view>
+    <view class="loading" wx:if="{{loading}}">加载中...</view>
+
+    <view wx:if="{{!loading}}">
+      <view id="chapterTop"></view>
+      <view class="paragraph-block" wx:for="{{paragraphBlocks}}" wx:key="key">
+        <view class="paragraph" style="font-size: {{fontSize}}rpx;" data-start="{{item.start}}" bindlongpress="onParagraphLongPress">
+          <text selectable>{{item.text}}</text>
+          <text
+            class="comment-bubble-inline"
+            wx:if="{{(item.commentCount || 0) > 0}}"
+            data-start="{{item.start}}"
+            bindtap="openComments"
+          >
+            🍅{{item.commentCount}}
+          </text>
+        </view>
+      </view>
+    </view>
+
+    <view class="chapter-actions">
+      <button size="mini" bindtap="prevChapter" disabled="{{currentIndex === 0}}">上一章</button>
+      <button size="mini" bindtap="nextChapter" disabled="{{currentIndex >= chapters.length - 1}}">下一章</button>
+      <button size="mini" type="primary" bindtap="urgeUpdate" wx:if="{{isLastChapter}}">催更</button>
+    </view>
+  </view>
+
+  <view class="comment-mask" wx:if="{{commentVisible}}" bindtap="closeCommentPanel"></view>
+  <view class="comment-panel {{darkMode ? 'dark' : ''}}" wx:if="{{commentVisible}}" catchtap="stopBubble">
+    <view class="comment-head">
+      <view class="title">段评（第 {{selectedParagraphIndex + 1}} 段）</view>
+      <button size="mini" bindtap="closeCommentPanel">关闭</button>
+    </view>
+
+    <view class="sort-row">
+      <button size="mini" class="{{commentSort==='time' ? 'mode-active' : ''}}" data-sort="time" bindtap="setCommentSort">最新</button>
+      <button size="mini" class="{{commentSort==='hot' ? 'mode-active' : ''}}" data-sort="hot" bindtap="setCommentSort">最热</button>
+    </view>
+
+    <view class="reply-tip" wx:if="{{replyHint}}">
+      <text>{{replyHint}}</text>
+      <button size="mini" bindtap="cancelReply">取消</button>
+    </view>
+
+    <textarea class="comment-input" placeholder="说点什么吧" value="{{commentInput}}" bindinput="onCommentInput" />
+    <button class="submit-btn" type="primary" size="mini" loading="{{commentSubmitting}}" bindtap="submitComment">提交评论</button>
+
+    <scroll-view class="comment-list" scroll-y>
+      <view class="loading" wx:if="{{commentLoading}}">加载中...</view>
+      <view class="sub" wx:if="{{!commentLoading && !comments.length}}">暂无评论</view>
+
+      <view class="comment-item" wx:for="{{comments}}" wx:key="id">
+        <view wx:if="{{!item.hidden}}">
+          <view class="comment-user">
+            <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+            <view class="avatar-fallback" wx:else>{{item.displayName && item.displayName[0] || '匿'}}</view>
+            <text>{{item.displayName}}</text>
+          </view>
+          <view class="comment-content">{{item.content}}</view>
+          <view class="comment-meta sub">{{item.createTimeText}} · 赞 {{item.likeCount || 0}} / 踩 {{item.dislikeCount || 0}}</view>
+          <view class="comment-actions">
+            <button size="mini" data-id="{{item.id}}" data-value="{{item.userReaction===1 ? 0 : 1}}" bindtap="onReact">{{item.userReaction===1 ? '取消赞' : '点赞'}}</button>
+            <button size="mini" data-id="{{item.id}}" data-value="{{item.userReaction===-1 ? 0 : -1}}" bindtap="onReact">{{item.userReaction===-1 ? '取消踩' : '拉踩'}}</button>
+            <button size="mini" data-parentid="{{item.id}}" data-username="{{item.displayName}}" bindtap="startReply">回复</button>
+            <button size="mini" data-id="{{item.id}}" bindtap="onHide">折叠</button>
+          </view>
+        </view>
+        <view wx:else>
+          <view class="sub">该评论已折叠</view>
+          <button size="mini" data-id="{{item.id}}" bindtap="onUnhide">展开</button>
+        </view>
+
+        <view class="reply-item" wx:for="{{item.replies}}" wx:key="id">
+          <view wx:if="{{!item.hidden}}">
+            <view class="comment-user">
+              <image wx:if="{{item.avatar}}" class="avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+              <view class="avatar-fallback" wx:else>{{item.displayName && item.displayName[0] || '匿'}}</view>
+              <text>{{item.displayName}}</text>
+            </view>
+            <view class="comment-content">{{item.content}}</view>
+            <view class="comment-meta sub">{{item.createTimeText}} · 赞 {{item.likeCount || 0}} / 踩 {{item.dislikeCount || 0}}</view>
+            <view class="comment-actions">
+              <button size="mini" data-id="{{item.id}}" data-value="{{item.userReaction===1 ? 0 : 1}}" bindtap="onReact">{{item.userReaction===1 ? '取消赞' : '点赞'}}</button>
+              <button size="mini" data-id="{{item.id}}" data-value="{{item.userReaction===-1 ? 0 : -1}}" bindtap="onReact">{{item.userReaction===-1 ? '取消踩' : '拉踩'}}</button>
+              <button size="mini" data-parentid="{{item.parentId}}" data-username="{{item.displayName}}" bindtap="startReply">回复</button>
+              <button size="mini" data-id="{{item.id}}" bindtap="onHide">折叠</button>
+            </view>
+          </view>
+          <view wx:else>
+            <view class="sub">该回复已折叠</view>
+            <button size="mini" data-id="{{item.id}}" bindtap="onUnhide">展开</button>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

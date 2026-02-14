@@ -10,10 +10,12 @@ import com.bookstore.entity.BookComment;
 import com.bookstore.entity.CommentNotice;
 import com.bookstore.entity.CommentHide;
 import com.bookstore.entity.CommentReaction;
+import com.bookstore.entity.User;
 import com.bookstore.mapper.BookCommentMapper;
 import com.bookstore.mapper.CommentHideMapper;
 import com.bookstore.mapper.CommentNoticeMapper;
 import com.bookstore.mapper.CommentReactionMapper;
+import com.bookstore.mapper.UserMapper;
 import com.bookstore.service.CommentService;
 import com.bookstore.vo.AdminCommentVO;
 import com.bookstore.vo.CommentVO;
@@ -27,6 +29,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,15 +43,17 @@ public class CommentServiceImpl implements CommentService {
     private final CommentReactionMapper commentReactionMapper;
     private final CommentHideMapper commentHideMapper;
     private final CommentNoticeMapper commentNoticeMapper;
+    private final UserMapper userMapper;
 
     @Override
-    public List<CommentVO> listComments(Long userId, Long bookId, Long chapterId, Integer paragraphIndex, String sortBy) {
-        if (chapterId == null || paragraphIndex == null) {
+    public List<CommentVO> listComments(Long userId, Long bookId, Long chapterId, Integer virtualChapterIndex, Integer paragraphIndex, String sortBy) {
+        Long chapterKey = resolveChapterKey(chapterId, virtualChapterIndex);
+        if (chapterKey == null || paragraphIndex == null) {
             return new ArrayList<>();
         }
         LambdaQueryWrapper<BookComment> wrapper = new LambdaQueryWrapper<BookComment>()
                 .eq(BookComment::getBookId, bookId)
-                .eq(BookComment::getChapterId, chapterId)
+                .eq(BookComment::getChapterId, chapterKey)
                 .eq(BookComment::getParagraphIndex, paragraphIndex)
                 .eq(BookComment::getStatus, STATUS_APPROVED)
                 .eq(BookComment::getDeleted, 0)
@@ -67,7 +72,7 @@ public class CommentServiceImpl implements CommentService {
         List<Long> rootIds = comments.stream().map(BookComment::getId).collect(Collectors.toList());
         List<BookComment> replyComments = bookCommentMapper.selectList(new LambdaQueryWrapper<BookComment>()
                 .eq(BookComment::getBookId, bookId)
-                .eq(BookComment::getChapterId, chapterId)
+                .eq(BookComment::getChapterId, chapterKey)
                 .eq(BookComment::getParagraphIndex, paragraphIndex)
                 .eq(BookComment::getStatus, STATUS_APPROVED)
                 .eq(BookComment::getDeleted, 0)
@@ -75,8 +80,25 @@ public class CommentServiceImpl implements CommentService {
                 .orderByAsc(BookComment::getCreateTime));
         List<Long> commentIds = new ArrayList<>(rootIds);
         replyComments.forEach(item -> commentIds.add(item.getId()));
+        Set<Long> userIds = comments.stream()
+                .map(BookComment::getUserId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+        userIds.addAll(replyComments.stream()
+                .map(BookComment::getUserId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet()));
         Map<Long, Integer> reactionMap = new HashMap<>();
         Map<Long, Boolean> hiddenMap = new HashMap<>();
+        Map<Long, User> userMap = new HashMap<>();
+
+        if (!userIds.isEmpty()) {
+            userMap = userMapper.selectList(new LambdaQueryWrapper<User>()
+                            .select(User::getId, User::getUsername, User::getNickname, User::getAvatar)
+                            .in(User::getId, userIds))
+                    .stream()
+                    .collect(Collectors.toMap(User::getId, item -> item));
+        }
 
         if (userId != null) {
             List<CommentReaction> reactions = commentReactionMapper.selectList(new LambdaQueryWrapper<CommentReaction>()
@@ -98,6 +120,10 @@ public class CommentServiceImpl implements CommentService {
             vo.setChapterId(reply.getChapterId());
             vo.setParagraphIndex(reply.getParagraphIndex());
             vo.setUserId(reply.getUserId());
+            User user = userMap.get(reply.getUserId());
+            vo.setUsername(user == null ? null : user.getUsername());
+            vo.setNickname(user == null ? null : user.getNickname());
+            vo.setAvatar(user == null ? null : user.getAvatar());
             vo.setParentId(reply.getParentId());
             vo.setContent(reply.getContent());
             vo.setLikeCount(reply.getLikeCount());
@@ -116,6 +142,10 @@ public class CommentServiceImpl implements CommentService {
             vo.setChapterId(comment.getChapterId());
             vo.setParagraphIndex(comment.getParagraphIndex());
             vo.setUserId(comment.getUserId());
+            User user = userMap.get(comment.getUserId());
+            vo.setUsername(user == null ? null : user.getUsername());
+            vo.setNickname(user == null ? null : user.getNickname());
+            vo.setAvatar(user == null ? null : user.getAvatar());
             vo.setParentId(comment.getParentId());
             vo.setContent(comment.getContent());
             vo.setLikeCount(comment.getLikeCount());
@@ -131,6 +161,10 @@ public class CommentServiceImpl implements CommentService {
 
     @Override
     public void createComment(Long userId, Long bookId, Long chapterId, CommentCreateRequest request) {
+        Long chapterKey = resolveChapterKey(chapterId, request.getVirtualChapterIndex());
+        if (chapterKey == null) {
+            throw new BizException(400, "chapter key invalid");
+        }
         if (!StringUtils.hasText(request.getContent())) {
             throw new BizException(400, "评论内容不能为空");
         }
@@ -144,14 +178,14 @@ public class CommentServiceImpl implements CommentService {
                 throw new BizException(400, "仅支持回复一级评论");
             }
             if (!parent.getBookId().equals(bookId)
-                    || !parent.getChapterId().equals(chapterId)
+                    || !parent.getChapterId().equals(chapterKey)
                     || !parent.getParagraphIndex().equals(request.getParagraphIndex())) {
                 throw new BizException(400, "父评论与段落不匹配");
             }
         }
         BookComment comment = new BookComment();
         comment.setBookId(bookId);
-        comment.setChapterId(chapterId);
+        comment.setChapterId(chapterKey);
         comment.setParagraphIndex(request.getParagraphIndex());
         comment.setUserId(userId);
         comment.setParentId(parentId);
@@ -310,15 +344,16 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
-    public Map<Integer, Long> commentCounts(Long bookId, Long chapterId) {
-        if (bookId == null || chapterId == null) {
+    public Map<Integer, Long> commentCounts(Long bookId, Long chapterId, Integer virtualChapterIndex) {
+        Long chapterKey = resolveChapterKey(chapterId, virtualChapterIndex);
+        if (bookId == null || chapterKey == null) {
             return new HashMap<>();
         }
         com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<BookComment> wrapper =
                 new com.baomidou.mybatisplus.core.conditions.query.QueryWrapper<>();
         wrapper.select("paragraph_index AS paragraphIndex", "COUNT(*) AS cnt")
                 .eq("book_id", bookId)
-                .eq("chapter_id", chapterId)
+                .eq("chapter_id", chapterKey)
                 .eq("status", STATUS_APPROVED)
                 .eq("deleted", 0)
                 .groupBy("paragraph_index");
@@ -332,5 +367,18 @@ public class CommentServiceImpl implements CommentService {
             }
         }
         return result;
+    }
+
+    private Long resolveChapterKey(Long chapterId, Integer virtualChapterIndex) {
+        if (chapterId != null && chapterId > 0) {
+            return chapterId;
+        }
+        if (virtualChapterIndex != null && virtualChapterIndex > 0) {
+            return -virtualChapterIndex.longValue();
+        }
+        if (chapterId != null && chapterId < 0) {
+            return chapterId;
+        }
+        return null;
     }
 }

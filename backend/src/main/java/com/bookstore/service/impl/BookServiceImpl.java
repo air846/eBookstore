@@ -21,10 +21,16 @@ import com.bookstore.mapper.FavoriteMapper;
 import com.bookstore.mapper.ReadHistoryMapper;
 import com.bookstore.mapper.VisitLogMapper;
 import com.bookstore.service.BookService;
+import com.bookstore.vo.PreferenceStatVO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -35,6 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -97,6 +104,61 @@ public class BookServiceImpl implements BookService {
         log.setVisitTime(LocalDateTime.now());
         visitLogMapper.insert(log);
         return book.getFileUrl();
+    }
+
+    @Override
+    public String readTxtContent(Long bookId) {
+        Book book = detail(bookId);
+        String fileUrl = book.getFileUrl();
+        if (!StringUtils.hasText(fileUrl)) {
+            throw new BizException(400, "文件地址为空");
+        }
+        String normalizedPath = normalizePath(fileUrl);
+        if (!normalizedPath.toLowerCase().endsWith(".txt")) {
+            throw new BizException(400, "当前仅支持读取 TXT 文件");
+        }
+        try {
+            Path path = Paths.get(normalizedPath);
+            if (!Files.exists(path) || !Files.isRegularFile(path)) {
+                throw new BizException(404, "文件不存在");
+            }
+            byte[] bytes = Files.readAllBytes(path);
+            String content = new String(bytes, StandardCharsets.UTF_8);
+            if (content.contains("\uFFFD")) {
+                content = new String(bytes, Charset.forName("GBK"));
+            }
+            return content;
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(500, "读取文件失败: " + ex.getMessage());
+        }
+    }
+
+    @Override
+    public Integer importTxtChapters(Long bookId) {
+        Book book = detail(bookId);
+        String fileUrl = book.getFileUrl();
+        if (!StringUtils.hasText(fileUrl)) {
+            throw new BizException(400, "文件地址为空");
+        }
+        if (!"TXT".equalsIgnoreCase(book.getFileType())) {
+            throw new BizException(400, "仅支持 TXT 书籍导入章节");
+        }
+        String content = readTxtContent(bookId);
+        List<BookChapter> parsed = parseTxtChapters(content, bookId);
+        if (parsed.isEmpty()) {
+            throw new BizException(400, "TXT 内容为空，无法导入章节");
+        }
+
+        bookChapterMapper.delete(new LambdaQueryWrapper<BookChapter>().eq(BookChapter::getBookId, bookId));
+        LocalDateTime now = LocalDateTime.now();
+        parsed.forEach(item -> {
+            item.setCreateTime(now);
+            item.setUpdateTime(now);
+            bookChapterMapper.insert(item);
+        });
+        return parsed.size();
     }
 
     @Override
@@ -171,6 +233,51 @@ public class BookServiceImpl implements BookService {
         return readHistoryMapper.selectList(new LambdaQueryWrapper<ReadHistory>()
                 .eq(ReadHistory::getUserId, userId)
                 .orderByDesc(ReadHistory::getReadTime));
+    }
+
+    @Override
+    public List<PreferenceStatVO> preferenceStats(Long userId) {
+        List<ReadHistory> histories = readHistoryMapper.selectList(new LambdaQueryWrapper<ReadHistory>()
+                .eq(ReadHistory::getUserId, userId));
+        if (histories.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Long> bookIds = histories.stream()
+                .map(ReadHistory::getBookId)
+                .distinct()
+                .collect(Collectors.toList());
+        if (bookIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Book> books = bookMapper.selectList(new LambdaQueryWrapper<Book>()
+                .select(Book::getId, Book::getCategoryId)
+                .in(Book::getId, bookIds));
+        if (books.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        Map<Long, Long> categoryCountMap = new HashMap<>();
+        for (Book item : books) {
+            if (item.getCategoryId() == null) {
+                continue;
+            }
+            categoryCountMap.merge(item.getCategoryId(), 1L, Long::sum);
+        }
+        if (categoryCountMap.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Category> categories = categoryMapper.selectList(new LambdaQueryWrapper<Category>()
+                .select(Category::getId, Category::getName));
+        Map<Long, String> categoryNameMap = categories.stream()
+                .collect(Collectors.toMap(Category::getId, Category::getName));
+
+        return categoryCountMap.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                .map(item -> new PreferenceStatVO(categoryNameMap.getOrDefault(item.getKey(), "其他"), item.getValue()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -323,6 +430,85 @@ public class BookServiceImpl implements BookService {
         if (chapter == null) {
             throw new BizException(404, "chapter not found");
         }
+        return chapter;
+    }
+
+    private String normalizePath(String path) {
+        String result = path.trim();
+        if (result.length() >= 2 && result.startsWith("\"") && result.endsWith("\"")) {
+            result = result.substring(1, result.length() - 1).trim();
+        }
+        return result;
+    }
+
+    private List<BookChapter> parseTxtChapters(String rawContent, Long bookId) {
+        String content = rawContent == null ? "" : rawContent.replace("\r\n", "\n").trim();
+        if (content.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> lines = List.of(content.split("\n", -1));
+        Pattern titlePattern = Pattern.compile("^(第[0-9一二三四五六七八九十百千万零两]+[章节卷篇部回].*|(?:chapter|chap\\.?)\\s*\\d+.*)$", Pattern.CASE_INSENSITIVE);
+        List<Integer> titleIndexes = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            String text = lines.get(i).trim();
+            if (text.isEmpty() || text.length() > 60) {
+                continue;
+            }
+            if (titlePattern.matcher(text).matches()) {
+                titleIndexes.add(i);
+            }
+        }
+
+        List<BookChapter> chapters = new ArrayList<>();
+        if (!titleIndexes.isEmpty()) {
+            int firstTitleIndex = titleIndexes.get(0);
+            String preface = String.join("\n", lines.subList(0, firstTitleIndex)).trim();
+            if (StringUtils.hasText(preface)) {
+                chapters.add(newTxtChapter(bookId, "前言", preface, chapters.size() + 1));
+            }
+            for (int i = 0; i < titleIndexes.size(); i++) {
+                int start = titleIndexes.get(i);
+                int end = i == titleIndexes.size() - 1 ? lines.size() : titleIndexes.get(i + 1);
+                String title = lines.get(start).trim();
+                String body = String.join("\n", lines.subList(start + 1, end)).trim();
+                if (!StringUtils.hasText(body)) {
+                    continue;
+                }
+                chapters.add(newTxtChapter(bookId, StringUtils.hasText(title) ? title : ("第" + (i + 1) + "章"), body, chapters.size() + 1));
+            }
+            return chapters;
+        }
+
+        int maxChars = 8000;
+        String[] paragraphs = content.split("\\n{2,}");
+        StringBuilder buffer = new StringBuilder();
+        int partIndex = 1;
+        for (String paragraph : paragraphs) {
+            String item = paragraph.trim();
+            if (!StringUtils.hasText(item)) {
+                continue;
+            }
+            String candidate = buffer.length() == 0 ? item : buffer + "\n\n" + item;
+            if (candidate.length() > maxChars && buffer.length() > 0) {
+                chapters.add(newTxtChapter(bookId, "第" + partIndex + "节", buffer.toString().trim(), chapters.size() + 1));
+                partIndex++;
+                buffer = new StringBuilder(item);
+            } else {
+                buffer = new StringBuilder(candidate);
+            }
+        }
+        if (buffer.length() > 0) {
+            chapters.add(newTxtChapter(bookId, "第" + partIndex + "节", buffer.toString().trim(), chapters.size() + 1));
+        }
+        return chapters;
+    }
+
+    private BookChapter newTxtChapter(Long bookId, String title, String content, int sortOrder) {
+        BookChapter chapter = new BookChapter();
+        chapter.setBookId(bookId);
+        chapter.setTitle(title);
+        chapter.setContent(content);
+        chapter.setSortOrder(sortOrder);
         return chapter;
     }
 }

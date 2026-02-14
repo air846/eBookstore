@@ -78,4 +78,9 @@ public class AdminBookController {
         bookService.deleteChapter(bookId, chapterId);
         return ApiResponse.success();
     }
+
+    @PostMapping("/{bookId}/chapters/import-txt")
+    public ApiResponse<Integer> importTxt(@PathVariable Long bookId) {
+        return ApiResponse.success(bookService.importTxtChapters(bookId));
+    }
 }

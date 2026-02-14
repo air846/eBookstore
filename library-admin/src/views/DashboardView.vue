@@ -1,12 +1,16 @@
 <script setup lang="ts">
 // 数据概览：仪表盘统计
 import * as echarts from "echarts";
-import { onMounted, ref } from "vue";
+import { onBeforeUnmount, onMounted, ref } from "vue";
 import request from "../utils/request";
 
 const stats = ref<any>({});
 const hotChartRef = ref<HTMLElement | null>(null);
-const countChartRef = ref<HTMLElement | null>(null);
+const dailyChartRef = ref<HTMLElement | null>(null);
+const categoryChartRef = ref<HTMLElement | null>(null);
+let hotChart: echarts.ECharts | null = null;
+let dailyChart: echarts.ECharts | null = null;
+let categoryChart: echarts.ECharts | null = null;
 
 async function loadData() {
   const res = await request.get("/admin/dashboard");
@@ -16,7 +20,7 @@ async function loadData() {
 
 function renderCharts() {
   if (hotChartRef.value) {
-    const hotChart = echarts.init(hotChartRef.value);
+    if (!hotChart) hotChart = echarts.init(hotChartRef.value);
     hotChart.setOption({
       tooltip: {},
       grid: { left: 34, right: 14, top: 22, bottom: 34 },
@@ -37,21 +41,42 @@ function renderCharts() {
     });
   }
 
-  if (countChartRef.value) {
-    const countChart = echarts.init(countChartRef.value);
-    countChart.setOption({
+  if (dailyChartRef.value) {
+    if (!dailyChart) dailyChart = echarts.init(dailyChartRef.value);
+    const points = stats.value.dailyVisitTrend || [];
+    dailyChart.setOption({
+      tooltip: { trigger: "axis" },
+      grid: { left: 34, right: 14, top: 22, bottom: 34 },
+      xAxis: {
+        type: "category",
+        data: points.map((item: any) => item.date),
+        axisLabel: { color: "#7f7265" }
+      },
+      yAxis: { type: "value", axisLabel: { color: "#7f7265" } },
+      series: [
+        {
+          type: "line",
+          smooth: true,
+          data: points.map((item: any) => item.value || 0),
+          lineStyle: { color: "#9a7f62" },
+          itemStyle: { color: "#9a7f62" },
+          areaStyle: { color: "rgba(154,127,98,0.16)" }
+        }
+      ]
+    });
+  }
+
+  if (categoryChartRef.value) {
+    if (!categoryChart) categoryChart = echarts.init(categoryChartRef.value);
+    categoryChart.setOption({
       tooltip: {},
       series: [
         {
           type: "pie",
           radius: ["44%", "72%"],
           label: { color: "#6f5f51" },
-          data: [
-            { name: "用户数", value: stats.value.totalUsers || 0 },
-            { name: "书籍数", value: stats.value.totalBooks || 0 },
-            { name: "今日访问", value: stats.value.todayVisits || 0 }
-          ],
-          color: ["#9a7f62", "#c0a487", "#dfc9b0"]
+          data: stats.value.categoryBookStats || [],
+          color: ["#9a7f62", "#c0a487", "#dfc9b0", "#b6906a", "#d8bfa5", "#8f745a"]
         }
       ]
     });
@@ -59,6 +84,12 @@ function renderCharts() {
 }
 
 onMounted(loadData);
+
+onBeforeUnmount(() => {
+  hotChart?.dispose();
+  dailyChart?.dispose();
+  categoryChart?.dispose();
+});
 </script>
 
 <template>
@@ -87,8 +118,17 @@ onMounted(loadData);
       </el-col>
       <el-col :xs="24" :lg="12">
         <el-card>
-          <h3 class="panel-title">系统总览</h3>
-          <div ref="countChartRef" class="chart"></div>
+          <h3 class="panel-title">近7日日活趋势</h3>
+          <div ref="dailyChartRef" class="chart"></div>
+        </el-card>
+      </el-col>
+    </el-row>
+
+    <el-row :gutter="18" class="chart-row">
+      <el-col :xs="24" :lg="12">
+        <el-card>
+          <h3 class="panel-title">书籍分类占比</h3>
+          <div ref="categoryChartRef" class="chart"></div>
         </el-card>
       </el-col>
     </el-row>

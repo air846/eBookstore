@@ -1,0 +1,18 @@
+<view class="container">
+  <view class="cover-showcase">
+    <view class="cover-title">eBookstore</view>
+    <view class="cover-sub">米棕极简阅读空间</view>
+  </view>
+  <view class="card login-card">
+    <view class="title">欢迎登录</view>
+    <view class="sub login-tip">轻松进入你的专属书库</view>
+    <view class="form-row">
+      <input placeholder="用户名" value="{{form.username}}" bindinput="onUsernameInput" />
+    </view>
+    <view class="form-row">
+      <input placeholder="密码" password value="{{form.password}}" bindinput="onPasswordInput" />
+    </view>
+    <button type="primary" loading="{{submitting}}" bindtap="handleLogin">登录</button>
+    <button class="mini-login-btn" loading="{{submitting}}" bindtap="handleMiniLogin">微信一键登录</button>
+  </view>
+</view>

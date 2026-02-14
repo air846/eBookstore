@@ -8,6 +8,7 @@ import com.bookstore.dto.HistorySaveRequest;
 import com.bookstore.entity.Book;
 import com.bookstore.entity.BookChapter;
 import com.bookstore.entity.ReadHistory;
+import com.bookstore.vo.PreferenceStatVO;
 
 import java.util.List;
 
@@ -19,6 +20,10 @@ public interface BookService {
 
     String readBook(Long userId, String ip, Long bookId);
 
+    String readTxtContent(Long bookId);
+
+    Integer importTxtChapters(Long bookId);
+
     void favorite(Long userId, Long bookId);
 
     void unfavorite(Long userId, Long bookId);
@@ -28,6 +33,8 @@ public interface BookService {
     void saveHistory(Long userId, HistorySaveRequest request);
 
     List<ReadHistory> historyList(Long userId);
+
+    List<PreferenceStatVO> preferenceStats(Long userId);
 
     void create(BookSaveRequest request);
 

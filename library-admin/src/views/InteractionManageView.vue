@@ -1,6 +1,7 @@
 <script setup lang="ts">
 // 互动管理：段评列表与催更统计
 import { onMounted, reactive, ref } from "vue";
+import { watch } from "vue";
 import { ElMessage } from "element-plus";
 import request from "../utils/request";
 
@@ -51,6 +52,12 @@ async function loadUrgeStats() {
 onMounted(async () => {
   await Promise.all([loadComments(), loadUrgeStats()]);
 });
+
+watch(activeTab, async (tab) => {
+  if (tab === "urge") {
+    await loadUrgeStats();
+  }
+});
 </script>
 
 <template>
@@ -93,6 +100,9 @@ onMounted(async () => {
         </el-tab-pane>
 
         <el-tab-pane label="催更统计" name="urge">
+          <div class="toolbar">
+            <el-button @click="loadUrgeStats">刷新</el-button>
+          </div>
           <el-table v-loading="urgeLoading" :data="urgeStats">
             <el-table-column prop="bookTitle" label="书名" min-width="200" />
             <el-table-column prop="bookId" label="书籍ID" width="120" />
