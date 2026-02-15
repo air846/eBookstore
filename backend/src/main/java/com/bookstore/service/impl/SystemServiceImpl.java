@@ -2,12 +2,15 @@ package com.bookstore.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.bookstore.dto.CarouselSaveRequest;
+import com.bookstore.dto.ServerLoadResponse;
 import com.bookstore.entity.Carousel;
 import com.bookstore.mapper.CarouselMapper;
 import com.bookstore.service.SystemService;
+import com.sun.management.OperatingSystemMXBean;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.lang.management.ManagementFactory;
 import java.util.List;
 
 @Service
@@ -52,5 +55,50 @@ public class SystemServiceImpl implements SystemService {
     @Override
     public void deleteCarousel(Long id) {
         carouselMapper.deleteById(id);
+    }
+
+    @Override
+    public ServerLoadResponse getServerLoad() {
+        ServerLoadResponse response = new ServerLoadResponse();
+
+        // 获取操作系统信息
+        OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        Runtime runtime = Runtime.getRuntime();
+
+        // CPU 使用率
+        double cpuLoad = osBean.getCpuLoad() * 100;
+        response.setCpuUsage(Math.round(cpuLoad * 100.0) / 100.0);
+
+        // 系统内存信息 (转换为 MB)
+        long totalPhysicalMemory = osBean.getTotalMemorySize() / (1024 * 1024);
+        long freePhysicalMemory = osBean.getFreeMemorySize() / (1024 * 1024);
+        long usedPhysicalMemory = totalPhysicalMemory - freePhysicalMemory;
+        double memoryUsage = totalPhysicalMemory > 0 ? (usedPhysicalMemory * 100.0 / totalPhysicalMemory) : 0;
+
+        response.setTotalMemory(totalPhysicalMemory);
+        response.setFreeMemory(freePhysicalMemory);
+        response.setUsedMemory(usedPhysicalMemory);
+        response.setMemoryUsage(Math.round(memoryUsage * 100.0) / 100.0);
+
+        // JVM 内存信息 (转换为 MB)
+        long jvmTotal = runtime.totalMemory() / (1024 * 1024);
+        long jvmFree = runtime.freeMemory() / (1024 * 1024);
+        long jvmUsed = jvmTotal - jvmFree;
+        long jvmMax = runtime.maxMemory() / (1024 * 1024);
+
+        response.setJvmTotalMemory(jvmTotal);
+        response.setJvmUsedMemory(jvmUsed);
+        response.setJvmMaxMemory(jvmMax);
+
+        // 系统信息
+        response.setOsName(osBean.getName());
+        response.setOsArch(osBean.getArch());
+        response.setAvailableProcessors(osBean.getAvailableProcessors());
+
+        // 运行时间 (秒)
+        long uptime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000;
+        response.setUptime(uptime);
+
+        return response;
     }
 }

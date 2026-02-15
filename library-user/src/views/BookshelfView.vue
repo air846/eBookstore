@@ -1,5 +1,4 @@
-<script setup lang="ts">
-// 书架页面：收藏列表、搜索与继续阅读
+﻿<script setup lang="ts">
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { ElMessage, ElMessageBox } from "element-plus";
@@ -11,7 +10,6 @@ interface BookItem {
   author?: string;
   coverUrl?: string;
   description?: string;
-  fileType?: string;
 }
 
 const router = useRouter();
@@ -76,74 +74,82 @@ onMounted(loadFavorites);
 </script>
 
 <template>
-  <div class="page-shell bookshelf" v-loading="loading">
+  <div class="page-shell bookshelf">
     <div class="header">
       <div>
         <h1 class="page-title">我的书架</h1>
-        <p class="page-subtitle">收藏的书籍会在这里沉淀，随时继续阅读。</p>
+        <p class="page-subtitle">随时接续你的阅读进度</p>
       </div>
       <el-input v-model="keyword" placeholder="搜索书名或作者" clearable class="search" />
     </div>
 
-    <el-empty v-if="!filteredItems.length" description="书架还没有内容" />
+    <div v-if="loading" class="list">
+      <el-skeleton v-for="n in 3" :key="n" animated>
+        <template #template>
+          <el-skeleton-item variant="image" style="width: 72px; height: 96px; border-radius: 10px" />
+          <el-skeleton-item variant="text" style="margin-top: -84px; margin-left: 88px; width: 55%" />
+          <el-skeleton-item variant="text" style="margin-top: 10px; margin-left: 88px; width: 40%" />
+          <el-skeleton-item variant="text" style="margin-top: 10px; margin-left: 88px; width: 72%" />
+        </template>
+      </el-skeleton>
+    </div>
 
-    <el-row v-else :gutter="20" class="grid">
-      <el-col v-for="book in filteredItems" :key="book.id" :xs="24" :sm="12" :md="8">
-        <el-card class="book-card" shadow="never">
-          <div class="card-body">
-            <img :src="book.coverUrl" class="cover" @click="openDetail(book)" />
-            <div class="info">
-              <div class="title" @click="openDetail(book)">{{ book.title }}</div>
-              <div class="meta">{{ book.author || "未知作者" }}</div>
-              <div class="desc">{{ book.description || "暂无简介" }}</div>
-              <div class="actions">
-                <el-button size="small" type="primary" @click="openReader(book)">继续阅读</el-button>
-                <el-button size="small" @click="openDetail(book)">详情</el-button>
-                <el-button size="small" type="danger" plain @click="removeFavorite(book)">移除</el-button>
-              </div>
+    <el-empty v-else-if="!filteredItems.length" description="书架还没有内容" />
+
+    <div v-else class="list">
+      <el-card v-for="book in filteredItems" :key="book.id" class="book-card" shadow="never">
+        <div class="card-body">
+          <img :src="book.coverUrl" class="cover" @click="openDetail(book)" />
+          <div class="info">
+            <div class="title" @click="openDetail(book)">{{ book.title }}</div>
+            <div class="meta">{{ book.author || "未知作者" }}</div>
+            <div class="desc">{{ book.description || "暂无简介" }}</div>
+            <div class="actions">
+              <el-button size="small" type="primary" @click="openReader(book)">继续阅读</el-button>
+              <el-button size="small" @click="openDetail(book)">详情</el-button>
+              <el-button size="small" type="danger" plain @click="removeFavorite(book)">移除</el-button>
             </div>
           </div>
-        </el-card>
-      </el-col>
-    </el-row>
+        </div>
+      </el-card>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .bookshelf {
   display: grid;
-  gap: 18px;
+  gap: 12px;
 }
 
 .header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 16px;
+  display: grid;
+  gap: 10px;
 }
 
 .search {
-  width: min(320px, 100%);
+  width: 100%;
 }
 
-.grid {
-  margin-top: 6px;
+.list {
+  display: grid;
+  gap: 10px;
 }
 
 .book-card {
-  border-radius: 16px;
+  border-radius: 14px;
 }
 
 .card-body {
   display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 16px;
+  grid-template-columns: 72px 1fr;
+  gap: 12px;
 }
 
 .cover {
-  width: 120px;
-  height: 160px;
-  border-radius: 12px;
+  width: 72px;
+  height: 96px;
+  border-radius: 10px;
   object-fit: cover;
   box-shadow: var(--shadow-light);
   cursor: pointer;
@@ -151,50 +157,34 @@ onMounted(loadFavorites);
 
 .info {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   cursor: pointer;
 }
 
 .meta {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
 .desc {
-  font-size: 13px;
+  font-size: 12px;
   color: #5a4d41;
-  line-height: 1.6;
+  line-height: 1.5;
   display: -webkit-box;
   -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  -webkit-line-clamp: 2;
   overflow: hidden;
 }
 
 .actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-@media (max-width: 900px) {
-  .header {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .card-body {
-    grid-template-columns: 100px 1fr;
-  }
-
-  .cover {
-    width: 100px;
-    height: 140px;
-  }
+  gap: 6px;
+  margin-top: 4px;
 }
 </style>

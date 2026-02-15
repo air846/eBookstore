@@ -51,14 +51,14 @@ async function submit() {
 
 <style scoped>
 .auth-page {
-  min-height: calc(100vh - 160px);
+  min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 20px 12px 30px;
+  padding: 20px 12px;
 }
 
 .card {
-  width: min(460px, 100%);
+  width: min(420px, 100%);
   padding: 8px 4px;
 }
 

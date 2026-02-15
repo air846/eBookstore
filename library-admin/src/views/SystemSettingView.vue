@@ -14,9 +14,25 @@ const form = reactive({
   status: 1
 });
 
+const serverLoad = ref<any>(null);
+const loadingServerInfo = ref(false);
+
 async function loadList() {
   const res = await request.get("/admin/system/carousel/list");
   list.value = res.data;
+}
+
+async function loadServerLoad() {
+  loadingServerInfo.value = true;
+  try {
+    const res = await request.get("/admin/system/server-load");
+    console.log("服务器负载数据:", res.data);
+    serverLoad.value = res.data;
+  } catch (error) {
+    console.error("获取服务器负载失败:", error);
+  } finally {
+    loadingServerInfo.value = false;
+  }
 }
 
 function openCreate() {
@@ -49,7 +65,17 @@ async function removeItem(row: any) {
   await loadList();
 }
 
-onMounted(loadList);
+function formatUptime(seconds: number): string {
+  const days = Math.floor(seconds / 86400);
+  const hours = Math.floor((seconds % 86400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return `${days}天 ${hours}小时 ${minutes}分钟`;
+}
+
+onMounted(() => {
+  loadList();
+  loadServerLoad();
+});
 </script>
 
 <template>
@@ -57,7 +83,79 @@ onMounted(loadList);
     <h1 class="title">系统设置</h1>
     <p class="subtitle">管理首页轮播图，支持排序、跳转链接与启停。</p>
 
-    <el-card>
+    <!-- 服务器负载监控 -->
+    <el-card v-loading="loadingServerInfo">
+      <template #header>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span style="font-weight: 600;">服务器负载监控</span>
+          <el-button size="small" @click="loadServerLoad">刷新</el-button>
+        </div>
+      </template>
+      <div v-if="serverLoad" class="server-info">
+        <el-row :gutter="20">
+          <el-col :span="12">
+            <div class="info-item">
+              <div class="info-label">CPU 使用率</div>
+              <el-progress
+                :percentage="serverLoad.cpuUsage"
+                :color="serverLoad.cpuUsage > 80 ? '#F56C6C' : serverLoad.cpuUsage > 60 ? '#E6A23C' : '#67C23A'"
+              />
+            </div>
+          </el-col>
+          <el-col :span="12">
+            <div class="info-item">
+              <div class="info-label">内存使用率</div>
+              <el-progress
+                :percentage="serverLoad.memoryUsage"
+                :color="serverLoad.memoryUsage > 80 ? '#F56C6C' : serverLoad.memoryUsage > 60 ? '#E6A23C' : '#67C23A'"
+              />
+            </div>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20" style="margin-top: 20px;">
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">系统内存</div>
+              <div class="info-value">{{ serverLoad.usedMemory }} MB / {{ serverLoad.totalMemory }} MB</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">JVM 内存</div>
+              <div class="info-value">{{ serverLoad.jvmUsedMemory }} MB / {{ serverLoad.jvmMaxMemory }} MB</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">运行时间</div>
+              <div class="info-value">{{ formatUptime(serverLoad.uptime) }}</div>
+            </div>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20" style="margin-top: 20px;">
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">操作系统</div>
+              <div class="info-value">{{ serverLoad.osName }}</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">系统架构</div>
+              <div class="info-value">{{ serverLoad.osArch }}</div>
+            </div>
+          </el-col>
+          <el-col :span="8">
+            <div class="info-item">
+              <div class="info-label">处理器数量</div>
+              <div class="info-value">{{ serverLoad.availableProcessors }} 核</div>
+            </div>
+          </el-col>
+        </el-row>
+      </div>
+    </el-card>
+
+    <el-card class="spaced">
       <el-button type="primary" @click="openCreate">新增轮播图</el-button>
     </el-card>
 
@@ -116,5 +214,25 @@ onMounted(loadList);
 
 .spaced {
   margin-top: 14px;
+}
+
+.server-info {
+  padding: 10px 0;
+}
+
+.info-item {
+  margin-bottom: 10px;
+}
+
+.info-label {
+  font-size: 14px;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+.info-value {
+  font-size: 16px;
+  font-weight: 500;
+  color: #303133;
 }
 </style>

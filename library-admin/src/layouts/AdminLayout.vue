@@ -1,5 +1,4 @@
-<script setup lang="ts">
-// 管理端布局：侧边栏菜单 + 内容区
+﻿<script setup lang="ts">
 import { computed } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useAdminAuthStore } from "../stores/auth";
@@ -37,7 +36,7 @@ function logout() {
       </div>
 
       <el-menu :default-active="active" class="menu">
-        <el-menu-item index="/" @click="go('/')">数据概览</el-menu-item>
+        <el-menu-item index="/" @click="go('/')">控制台</el-menu-item>
         <el-menu-item index="/books" @click="go('/books')">书籍管理</el-menu-item>
         <el-menu-item index="/categories" @click="go('/categories')">分类管理</el-menu-item>
         <el-menu-item index="/users" @click="go('/users')">用户管理</el-menu-item>

@@ -43,4 +43,9 @@ public class AdminSystemController {
         systemService.deleteCarousel(id);
         return ApiResponse.success();
     }
+
+    @GetMapping("/server-load")
+    public ApiResponse<?> getServerLoad() {
+        return ApiResponse.success(systemService.getServerLoad());
+    }
 }

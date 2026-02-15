@@ -1,7 +1,6 @@
-<script setup lang="ts">
-// 阅读器页面：章节切换、段落排版、段评与催更
+﻿<script setup lang="ts">
 import { computed, nextTick, onMounted, reactive, ref } from "vue";
-import { useRoute } from "vue-router";
+import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
 import request from "../utils/request";
 
@@ -14,12 +13,14 @@ interface ChapterRow {
 }
 
 const route = useRoute();
+const router = useRouter();
 const loading = ref(false);
 const contentRef = ref<HTMLElement | null>(null);
 const fileUrl = ref("");
 const chapters = ref<ChapterRow[]>([]);
 const currentIndex = ref(0);
 const chapterDrawerVisible = ref(false);
+const settingVisible = ref(false);
 const paragraphMode = ref<1 | 2 | 3>(1);
 const lineWidthMode = ref<"comfort" | "focus">("comfort");
 const setting = reactive({
@@ -42,6 +43,7 @@ const progressText = computed(() => {
   if (!chapters.value.length) return "0%";
   return `${Math.round(((currentIndex.value + 1) * 100) / chapters.value.length)}%`;
 });
+const progressNumber = computed(() => Number(progressText.value.replace("%", "")) || 0);
 const currentParagraphs = computed(() => splitParagraphs(currentChapter.value?.content || ""));
 
 function splitParagraphs(content: string): string[] {
@@ -90,16 +92,16 @@ function buildTxtChapters(rawContent: string, bookId: number): ChapterRow[] {
     }
   });
 
-  const chapters: ChapterRow[] = [];
+  const chapterRows: ChapterRow[] = [];
   const buildChapter = (title: string, body: string) => {
     const normalizedBody = body.trim();
     if (!normalizedBody) return;
-    chapters.push({
-      id: -(chapters.length + 1),
+    chapterRows.push({
+      id: -(chapterRows.length + 1),
       bookId,
       title,
       content: normalizedBody,
-      sortOrder: chapters.length + 1
+      sortOrder: chapterRows.length + 1
     });
   };
 
@@ -117,7 +119,6 @@ function buildTxtChapters(rawContent: string, bookId: number): ChapterRow[] {
       buildChapter(title || `第${i + 1}章`, body);
     }
   } else {
-    // 没有明显章节标题时，按长度兜底切分，避免整本书只有一个章节。
     const maxChars = 8000;
     let buffer = "";
     let index = 1;
@@ -136,7 +137,7 @@ function buildTxtChapters(rawContent: string, bookId: number): ChapterRow[] {
     }
   }
 
-  return chapters;
+  return chapterRows;
 }
 
 async function saveHistory() {
@@ -298,6 +299,23 @@ function cancelReply() {
   replyTarget.value = null;
 }
 
+function showRipple(event: MouseEvent) {
+  const host = event.currentTarget as HTMLElement | null;
+  if (!host) return;
+  const rect = host.getBoundingClientRect();
+  const ripple = document.createElement("span");
+  ripple.className = "reader-ripple";
+  ripple.style.left = `${event.clientX - rect.left}px`;
+  ripple.style.top = `${event.clientY - rect.top}px`;
+  host.appendChild(ripple);
+  window.setTimeout(() => ripple.remove(), 520);
+}
+
+function onSelectChapter(index: number, event: MouseEvent) {
+  showRipple(event);
+  selectChapter(index);
+}
+
 async function urge() {
   await request.post(`/book/${route.params.id}/urge`);
   ElMessage.success("催更成功，已通知管理员");
@@ -308,61 +326,59 @@ function resetReadPosition() {
   window.scrollTo({ top: 0, behavior: "auto" });
 }
 
+function goBack() {
+  router.back();
+}
+
 onMounted(loadReadInfo);
 </script>
 
 <template>
-  <div :class="['reader', { dark: setting.dark }]" v-loading="loading">
-    <div class="toolbar glass">
-      <el-space wrap>
-        <el-button size="small" @click="chapterDrawerVisible = true">目录</el-button>
-        <span class="label">字号</span>
-        <el-slider v-model="setting.fontSize" :min="14" :max="28" style="width: 160px" />
-        <el-switch v-model="setting.dark" inline-prompt active-text="夜间" inactive-text="日间" />
-        <el-divider direction="vertical" />
-        <span class="label">排版</span>
+  <div :class="['reader-shell', { dark: setting.dark }]">
+    <header class="reader-topbar">
+      <el-button circle plain @click="goBack">返</el-button>
+      <div class="top-actions">
+        <el-button circle plain @click="settingVisible = !settingVisible">字</el-button>
+        <el-button circle plain @click="setting.dark = !setting.dark">夜</el-button>
+        <el-button circle plain @click="chapterDrawerVisible = true">章</el-button>
+      </div>
+    </header>
+
+    <div v-if="settingVisible" class="setting-panel">
+      <div class="setting-row">
+        <span>字号</span>
+        <el-slider v-model="setting.fontSize" :min="14" :max="28" style="width: 180px" />
+      </div>
+      <div class="setting-row">
+        <span>分栏</span>
         <el-select v-model="paragraphMode" size="small" style="width: 120px">
-          <el-option :value="1" label="一段式" />
-          <el-option :value="2" label="二段式" />
-          <el-option :value="3" label="三段式" />
+          <el-option :value="1" label="单栏" />
+          <el-option :value="2" label="双栏" />
+          <el-option :value="3" label="三栏" />
         </el-select>
-        <span class="label">行宽</span>
+        <span>宽度</span>
         <el-select v-model="lineWidthMode" size="small" style="width: 120px">
-          <el-option value="comfort" label="舒适模式" />
-          <el-option value="focus" label="专注模式" />
+          <el-option value="comfort" label="舒适" />
+          <el-option value="focus" label="专注" />
         </el-select>
-        <el-button size="small" :disabled="currentIndex <= 0" @click="prevChapter">上一章</el-button>
-        <el-button
-          size="small"
-          :disabled="currentIndex >= chapters.length - 1 || chapters.length === 0"
-          @click="nextChapter"
-        >
-          下一章
-        </el-button>
-        <el-button v-if="isLastChapter" size="small" type="primary" plain @click="urge">催更</el-button>
-        <span class="progress">进度：{{ progressText }}</span>
-      </el-space>
+      </div>
     </div>
 
-    <main ref="contentRef" :class="['content', `width-${lineWidthMode}`]" :style="{ fontSize: `${setting.fontSize}px` }">
-      <template v-if="currentChapter">
-        <div class="chapter-nav chapter-nav-top">
-          <el-button size="small" :disabled="currentIndex <= 0" @click="prevChapter">上一章</el-button>
-          <el-button
-            size="small"
-            :disabled="currentIndex >= chapters.length - 1 || chapters.length === 0"
-            @click="nextChapter"
-          >
-            下一章
-          </el-button>
-        </div>
+    <main ref="contentRef" :class="['reader-content', `width-${lineWidthMode}`]" :style="{ fontSize: `${setting.fontSize}px` }">
+      <template v-if="loading">
+        <el-skeleton :rows="8" animated />
+      </template>
+
+      <template v-else-if="currentChapter">
         <h1 class="chapter-title">{{ currentChapter.title }}</h1>
+
         <div :class="['chapter-content', `mode-${paragraphMode}`]">
           <div
             v-for="(paragraph, index) in currentParagraphs"
             :key="index"
-            class="paragraph-block"
+            class="paragraph-block ripple-host"
             @contextmenu.prevent="openComments(index)"
+            @click="showRipple($event)"
           >
             <p class="paragraph">{{ paragraph }}</p>
             <button
@@ -371,27 +387,34 @@ onMounted(loadReadInfo);
               class="comment-bubble"
               @click="openComments(index)"
             >
-              <span class="comment-bubble-icon" aria-hidden="true"></span>
-              <span class="comment-bubble-count">{{ commentCounts[index] }}</span>
+              评 {{ commentCounts[index] }}
             </button>
           </div>
         </div>
-        <div class="chapter-nav chapter-nav-bottom">
-          <el-button size="small" :disabled="currentIndex <= 0" @click="prevChapter">上一章</el-button>
-          <el-button
-            size="small"
-            :disabled="currentIndex >= chapters.length - 1 || chapters.length === 0"
-            @click="nextChapter"
-          >
-            下一章
-          </el-button>
-        </div>
       </template>
+
       <template v-else>
         <el-empty description="当前书籍还没有章节内容" />
         <p class="file-url" v-if="fileUrl">资源地址：{{ fileUrl }}</p>
       </template>
     </main>
+
+    <footer class="reader-footer">
+      <div class="progress-row">
+        <span>CHAPTER {{ String(currentIndex + 1).padStart(2, "0") }}</span>
+        <span>PROGRESS {{ progressText }}</span>
+      </div>
+      <div class="progress-bar">
+        <span :style="{ width: `${progressNumber}%` }"></span>
+      </div>
+      <div class="chapter-nav">
+        <el-button size="small" :disabled="currentIndex <= 0" @click="prevChapter">上一章</el-button>
+        <el-button size="small" :disabled="currentIndex >= chapters.length - 1 || chapters.length === 0" @click="nextChapter">
+          下一章
+        </el-button>
+        <el-button v-if="isLastChapter" size="small" type="primary" plain @click="urge">催更</el-button>
+      </div>
+    </footer>
 
     <el-drawer v-model="chapterDrawerVisible" direction="ltr" size="320px" :with-header="false" append-to-body>
       <aside class="chapter-panel">
@@ -401,8 +424,8 @@ onMounted(loadReadInfo);
           <div
             v-for="(chapter, index) in chapters"
             :key="chapter.id"
-            :class="['chapter-item', { active: index === currentIndex }]"
-            @click="selectChapter(index)"
+            :class="['chapter-item', 'ripple-host', { active: index === currentIndex }]"
+            @click="onSelectChapter(index, $event)"
           >
             {{ index + 1 }}. {{ chapter.title }}
           </div>
@@ -417,6 +440,7 @@ onMounted(loadReadInfo);
           <el-option value="time" label="最新" />
           <el-option value="hot" label="最热" />
         </el-select>
+
         <div class="comment-input">
           <div v-if="replyTarget" class="reply-tip">
             正在回复用户 {{ replyTarget.userId }} 的评论
@@ -488,85 +512,80 @@ onMounted(loadReadInfo);
 </template>
 
 <style scoped>
-.reader {
+.reader-shell {
   min-height: calc(100vh - 160px);
+  background: #f4ecd8;
+  color: #5b4636;
   border-radius: 18px;
-  background: rgba(255, 252, 247, 0.65);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   box-shadow: var(--shadow-soft);
 }
 
-.reader.dark {
-  background: rgba(22, 21, 20, 0.78);
-  color: #f4efe8;
+.reader-shell.dark {
+  background: #1a1a1a;
+  color: #d2c7b8;
 }
 
-.toolbar {
-  position: sticky;
-  top: 92px;
-  z-index: 6;
-  padding: 12px 18px;
-  border-bottom: 1px solid rgba(145, 121, 94, 0.14);
-}
-
-.glass {
-  background: rgba(253, 248, 241, 0.66);
+.reader-topbar {
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(128, 101, 73, 0.16);
+  background: rgba(253, 247, 236, 0.64);
   backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
 }
 
-.label {
-  color: var(--text-muted);
+.dark .reader-topbar {
+  background: rgba(35, 35, 35, 0.85);
+  border-bottom-color: rgba(212, 196, 178, 0.14);
 }
 
-.progress {
-  color: #725d49;
+.top-actions {
+  display: flex;
+  gap: 8px;
 }
 
-.content {
-  position: relative;
-  margin: 20px auto;
-  padding: 28px 40px 30px;
-  line-height: 2;
-  border-radius: 16px;
-  background: rgba(255, 250, 242, 0.84);
-  box-shadow: inset 0 0 0 1px rgba(139, 114, 88, 0.08);
-  transition: max-width 0.2s ease, background-color 0.2s ease;
+.setting-panel {
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(128, 101, 73, 0.14);
+  background: rgba(255, 249, 239, 0.66);
+  display: grid;
+  gap: 10px;
 }
 
-.content::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    radial-gradient(rgba(122, 99, 75, 0.06) 0.8px, transparent 0.8px),
-    linear-gradient(140deg, rgba(255, 255, 255, 0.44), rgba(255, 255, 255, 0));
-  background-size: 3px 3px, 100% 100%;
-  opacity: 0.56;
+.dark .setting-panel {
+  background: rgba(39, 39, 39, 0.84);
 }
 
-.content > * {
-  position: relative;
-  z-index: 1;
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.content.width-comfort {
-  max-width: 1080px;
+.reader-content {
+  flex: 1;
+  margin: 20px auto 10px;
+  width: min(100%, 1080px);
+  padding: 24px 30px;
+  overflow: auto;
 }
 
-.content.width-focus {
-  max-width: 760px;
+.reader-content.width-focus {
+  width: min(100%, 760px);
 }
 
 .chapter-title {
   margin: 0 0 16px;
-  font-size: 30px;
-  line-height: 1.28;
-  letter-spacing: 0.8px;
+  line-height: 1.35;
 }
 
 .chapter-content {
-  column-gap: 32px;
+  column-gap: 24px;
 }
 
 .chapter-content.mode-2 {
@@ -577,80 +596,96 @@ onMounted(loadReadInfo);
   column-count: 3;
 }
 
-.paragraph {
-  margin: 0 0 1em;
-  text-indent: 2em;
-  white-space: pre-wrap;
-  break-inside: avoid;
-  color: inherit;
-}
-
 .paragraph-block {
   position: relative;
   break-inside: avoid;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+}
+
+.paragraph-block:hover {
+  background: rgba(175, 143, 111, 0.08);
+}
+
+.paragraph {
+  margin: 0 0 1em;
+  line-height: 2;
+  text-indent: 2em;
+  white-space: pre-wrap;
 }
 
 .comment-bubble {
   position: absolute;
   right: 0;
-  bottom: 6px;
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 2px 8px;
+  bottom: 4px;
   border: none;
   border-radius: 999px;
-  background: rgba(238, 225, 210, 0.85);
-  color: #6b513b;
+  padding: 2px 8px;
   font-size: 12px;
-  line-height: 1;
   cursor: pointer;
-  box-shadow: var(--shadow-light);
-  transform: translateY(8px);
+  background: rgba(175, 143, 111, 0.16);
+  color: #6b513b;
+  transition: transform 0.2s ease, background-color 0.2s ease;
 }
 
-.comment-bubble-icon {
-  width: 12px;
-  height: 10px;
-  border-radius: 6px;
-  background: rgba(145, 121, 94, 0.55);
-  position: relative;
+.comment-bubble:hover {
+  transform: translateY(-2px);
+  background: rgba(175, 143, 111, 0.3);
 }
 
-.comment-bubble-icon::after {
-  content: "";
-  position: absolute;
-  right: -2px;
-  bottom: -2px;
-  width: 6px;
-  height: 6px;
-  background: rgba(145, 121, 94, 0.55);
-  border-radius: 2px;
-  transform: rotate(45deg);
+.dark .comment-bubble {
+  background: rgba(212, 196, 178, 0.2);
+  color: #f0e5d8;
 }
 
-.comment-bubble-count {
-  font-variant-numeric: tabular-nums;
+.reader-footer {
+  padding: 10px 16px 14px;
+  border-top: 1px solid rgba(128, 101, 73, 0.14);
+  background: rgba(253, 247, 236, 0.74);
+}
+
+.dark .reader-footer {
+  background: rgba(30, 30, 30, 0.88);
+}
+
+.progress-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.7;
+}
+
+.progress-bar {
+  margin-top: 6px;
+  height: 4px;
+  background: rgba(92, 71, 50, 0.14);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-bar span {
+  display: block;
+  height: 100%;
+  background: #af8f6f;
 }
 
 .chapter-nav {
+  margin-top: 10px;
   display: flex;
-  justify-content: space-between;
-  gap: 12px;
+  gap: 8px;
 }
 
-.chapter-nav-top {
-  margin-bottom: 8px;
-}
-
-.chapter-nav-bottom {
-  margin-top: 20px;
+.file-url {
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 13px;
 }
 
 .panel-title {
+  margin: 0 0 10px;
   font-size: 18px;
   font-weight: 600;
-  margin-bottom: 14px;
 }
 
 .chapter-list {
@@ -664,62 +699,17 @@ onMounted(loadReadInfo);
   cursor: pointer;
   margin-bottom: 8px;
   background: rgba(246, 238, 229, 0.74);
-  transition: all 0.2s ease;
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+.chapter-item:hover {
+  transform: translateX(2px);
+  background: rgba(236, 225, 211, 0.85);
 }
 
 .chapter-item.active {
   background: rgba(154, 127, 98, 0.86);
   color: #fff;
-}
-
-.file-url {
-  margin-top: 12px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.reader.dark .toolbar {
-  border-bottom-color: rgba(214, 198, 177, 0.18);
-}
-
-.reader.dark .glass {
-  background: rgba(33, 30, 28, 0.74);
-}
-
-.reader.dark .chapter-item {
-  background: rgba(52, 45, 38, 0.8);
-  color: #f5efe7;
-}
-
-.reader.dark .content {
-  background: rgba(35, 33, 31, 0.82);
-  box-shadow: inset 0 0 0 1px rgba(221, 202, 177, 0.1);
-}
-
-.reader.dark .content::before {
-  background-image:
-    radial-gradient(rgba(236, 226, 214, 0.06) 0.9px, transparent 0.9px),
-    linear-gradient(140deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0));
-  opacity: 0.34;
-}
-
-.reader.dark .comment-bubble {
-  background: rgba(63, 54, 45, 0.8);
-  color: #e9dfd1;
-}
-
-.reader.dark .comment-bubble-icon,
-.reader.dark .comment-bubble-icon::after {
-  background: rgba(214, 198, 177, 0.7);
-}
-
-.reader.dark .reply-tip {
-  background: rgba(58, 50, 43, 0.8);
-  color: #e9dfd1;
-}
-
-.reader.dark .reply-item {
-  background: rgba(52, 45, 38, 0.7);
 }
 
 .comment-panel {
@@ -757,7 +747,11 @@ onMounted(loadReadInfo);
   padding: 12px;
   border-radius: 12px;
   background: rgba(250, 244, 236, 0.7);
-  box-shadow: var(--shadow-light);
+  transition: transform 0.2s ease;
+}
+
+.comment-item:hover {
+  transform: translateY(-2px);
 }
 
 .comment-content p {
@@ -799,21 +793,45 @@ onMounted(loadReadInfo);
   background: rgba(248, 242, 235, 0.7);
 }
 
-@media (max-width: 1240px) {
+.dark .reply-tip,
+.dark .reply-item,
+.dark .comment-item {
+  background: rgba(52, 45, 38, 0.75);
+}
+
+.ripple-host {
+  position: relative;
+  overflow: hidden;
+}
+
+:deep(.reader-ripple) {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(175, 143, 111, 0.3);
+  transform: translate(-50%, -50%) scale(0);
+  pointer-events: none;
+  animation: reader-ripple 0.52s ease-out;
+}
+
+@keyframes reader-ripple {
+  to {
+    transform: translate(-50%, -50%) scale(16);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 1100px) {
   .chapter-content.mode-3 {
     column-count: 2;
   }
 }
 
 @media (max-width: 900px) {
-  .toolbar {
-    top: 110px;
-  }
-
-  .content {
-    padding: 20px 16px 24px;
-    margin: 14px 10px;
-    max-width: none;
+  .reader-content {
+    padding: 16px;
+    margin: 10px auto 6px;
   }
 
   .chapter-content.mode-2,

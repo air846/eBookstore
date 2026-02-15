@@ -1,6 +1,7 @@
 package com.bookstore.service;
 
 import com.bookstore.dto.CarouselSaveRequest;
+import com.bookstore.dto.ServerLoadResponse;
 import com.bookstore.entity.Carousel;
 
 import java.util.List;
@@ -16,4 +17,6 @@ public interface SystemService {
     void updateCarousel(Long id, CarouselSaveRequest request);
 
     void deleteCarousel(Long id);
+
+    ServerLoadResponse getServerLoad();
 }

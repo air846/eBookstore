@@ -1,4 +1,4 @@
-<script setup lang="ts">
+﻿<script setup lang="ts">
 import * as echarts from "echarts";
 import { ElMessage } from "element-plus";
 import { onBeforeUnmount, onMounted, reactive, ref } from "vue";
@@ -44,8 +44,8 @@ async function loadData() {
     request.get("/book/history/list"),
     request.get("/book/history/preference")
   ]);
-  favorites.value = favoriteRes.data;
-  history.value = historyRes.data;
+  favorites.value = Array.isArray(favoriteRes.data) ? favoriteRes.data : [];
+  history.value = Array.isArray(historyRes.data) ? historyRes.data : [];
   preferenceStats.value = preferenceRes.data || [];
 
   await loadNotices();
@@ -65,12 +65,15 @@ function renderChart() {
   }
   preferenceChart.setOption({
     tooltip: {},
+    grid: { left: 26, right: 12, top: 20, bottom: 28 },
     xAxis: {
       type: "category",
-      data: preferenceStats.value.map((item) => item.name)
+      data: preferenceStats.value.map((item) => item.name),
+      axisLabel: { fontSize: 11 }
     },
     yAxis: {
-      type: "value"
+      type: "value",
+      axisLabel: { fontSize: 11 }
     },
     series: [
       {
@@ -79,7 +82,7 @@ function renderChart() {
         itemStyle: {
           color: "#9a7f62"
         },
-        barWidth: 34
+        barWidth: 20
       }
     ]
   });
@@ -150,121 +153,109 @@ async function submitPassword() {
 </script>
 
 <template>
-  <div class="page-shell">
-    <h1 class="page-title">个人中心</h1>
-    <p class="page-subtitle">完善资料与安全设置，查看你的阅读偏好。</p>
+  <div class="page-shell profile-app">
+    <h1 class="page-title">我的</h1>
+    <p class="page-subtitle">管理资料、通知与阅读记录</p>
 
-    <el-row :gutter="20">
-      <el-col :xs="24" :md="8">
-        <el-card>
-          <h3 class="panel-title">个人信息</h3>
-          <el-form label-width="70px">
-            <el-form-item label="用户名">
-              <el-input :model-value="authStore.user?.username || ''" disabled />
-            </el-form-item>
-            <el-form-item label="昵称">
-              <el-input v-model="profileForm.nickname" maxlength="100" />
-            </el-form-item>
-            <el-form-item label="邮箱">
-              <el-input v-model="profileForm.email" maxlength="100" />
-            </el-form-item>
-            <el-form-item label="头像URL">
-              <el-input v-model="profileForm.avatar" maxlength="255" />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="profileSaving" @click="submitProfile">保存资料</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
+    <el-card>
+      <h3 class="panel-title">个人信息</h3>
+      <el-form label-position="top">
+        <el-form-item label="用户名">
+          <el-input :model-value="authStore.user?.username || ''" disabled />
+        </el-form-item>
+        <el-form-item label="昵称">
+          <el-input v-model="profileForm.nickname" maxlength="100" />
+        </el-form-item>
+        <el-form-item label="邮箱">
+          <el-input v-model="profileForm.email" maxlength="100" />
+        </el-form-item>
+        <el-form-item label="头像 URL">
+          <el-input v-model="profileForm.avatar" maxlength="255" />
+        </el-form-item>
+        <el-button type="primary" :loading="profileSaving" @click="submitProfile">保存资料</el-button>
+      </el-form>
+    </el-card>
 
-        <el-card class="spaced">
-          <h3 class="panel-title">账户安全</h3>
-          <el-form label-width="88px">
-            <el-form-item label="原密码">
-              <el-input v-model="passwordForm.oldPassword" type="password" show-password />
-            </el-form-item>
-            <el-form-item label="新密码">
-              <el-input v-model="passwordForm.newPassword" type="password" show-password />
-            </el-form-item>
-            <el-form-item label="确认新密码">
-              <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
-            </el-form-item>
-            <el-form-item>
-              <el-button type="primary" :loading="passwordSaving" @click="submitPassword">修改密码</el-button>
-            </el-form-item>
-          </el-form>
-        </el-card>
+    <el-card>
+      <h3 class="panel-title">账户安全</h3>
+      <el-form label-position="top">
+        <el-form-item label="原密码">
+          <el-input v-model="passwordForm.oldPassword" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="新密码">
+          <el-input v-model="passwordForm.newPassword" type="password" show-password />
+        </el-form-item>
+        <el-form-item label="确认新密码">
+          <el-input v-model="passwordForm.confirmPassword" type="password" show-password />
+        </el-form-item>
+        <el-button type="primary" :loading="passwordSaving" @click="submitPassword">修改密码</el-button>
+      </el-form>
+    </el-card>
 
-        <el-card class="spaced">
-          <div class="notice-header">
-            <h3 class="panel-title">评论通知</h3>
-            <el-button size="small" text @click="markAllRead">全部已读</el-button>
-          </div>
-          <div v-loading="noticeLoading">
-            <el-empty v-if="noticeList.length === 0" description="暂无通知" />
-            <div v-else class="notice-list">
-              <div v-for="item in noticeList" :key="item.id" class="notice-item">
-                <span class="notice-text">
-                  {{ item.type === 1 ? "有人点赞了你的评论" : "有人点踩了你的评论" }}
-                  ｜《{{ item.bookTitle || "未知书籍" }}》
-                  <span v-if="item.chapterTitle">· {{ item.chapterTitle }}</span>
-                  · 段落 {{ (item.paragraphIndex ?? 0) + 1 }}
-                </span>
-                <div class="notice-actions">
-                  <el-button size="small" text @click="goToNotice(item)">查看</el-button>
-                  <el-button size="small" text @click="markRead(item.id)">{{ item.readFlag === 1 ? "已读" : "标为已读" }}</el-button>
-                </div>
-              </div>
+    <el-card>
+      <div class="notice-header">
+        <h3 class="panel-title">评论通知</h3>
+        <el-button size="small" text @click="markAllRead">全部已读</el-button>
+      </div>
+      <div v-loading="noticeLoading">
+        <el-empty v-if="noticeList.length === 0" description="暂无通知" />
+        <div v-else class="notice-list">
+          <div v-for="item in noticeList" :key="item.id" class="notice-item">
+            <span class="notice-text">
+              {{ item.type === 1 ? "有人点赞了你的评论" : "有人点踩了你的评论" }}
+              《{{ item.bookTitle || "未知书籍" }}》
+            </span>
+            <div class="notice-actions">
+              <el-button size="small" text @click="goToNotice(item)">查看</el-button>
+              <el-button size="small" text @click="markRead(item.id)">{{ item.readFlag === 1 ? "已读" : "标记" }}</el-button>
             </div>
           </div>
-        </el-card>
+        </div>
+      </div>
+    </el-card>
 
-        <el-card class="spaced">
-          <h3 class="panel-title">我的书架</h3>
-          <el-empty v-if="favorites.length === 0" description="暂无收藏" />
-          <el-tag v-for="item in favorites" :key="item.id" class="tag">{{ item.title }}</el-tag>
-        </el-card>
-      </el-col>
+    <el-card>
+      <h3 class="panel-title">阅读偏好统计</h3>
+      <el-empty v-if="preferenceStats.length === 0" description="暂无阅读数据" />
+      <div v-else ref="chartRef" class="chart"></div>
+    </el-card>
 
-      <el-col :xs="24" :md="16">
-        <el-card>
-          <h3 class="panel-title">阅读偏好统计</h3>
-          <el-empty v-if="preferenceStats.length === 0" description="暂无阅读数据" />
-          <div v-else ref="chartRef" class="chart"></div>
-        </el-card>
-        <el-card class="spaced">
-          <h3 class="panel-title">阅读历史</h3>
-          <el-table :data="history">
-            <el-table-column prop="bookId" label="书籍ID" width="100" />
-            <el-table-column prop="chapter" label="章节" />
-            <el-table-column prop="progress" label="进度" width="120" />
-            <el-table-column prop="readTime" label="最近阅读时间" />
-          </el-table>
-        </el-card>
-      </el-col>
-    </el-row>
+    <el-card>
+      <h3 class="panel-title">最近阅读</h3>
+      <el-empty v-if="history.length === 0" description="暂无阅读记录" />
+      <div v-else class="history-list">
+        <div v-for="item in history.slice(0, 8)" :key="`${item.bookId}-${item.readTime}`" class="history-item">
+          <p>书籍 {{ item.bookId }} · {{ item.chapter || "未知章节" }}</p>
+          <span>{{ item.progress || "0%" }}</span>
+        </div>
+      </div>
+    </el-card>
+
+    <el-card>
+      <h3 class="panel-title">我的收藏</h3>
+      <el-empty v-if="favorites.length === 0" description="暂无收藏" />
+      <div v-else class="favorite-tags">
+        <el-tag v-for="item in favorites" :key="item.id" class="tag">{{ item.title }}</el-tag>
+      </div>
+    </el-card>
   </div>
 </template>
 
 <style scoped>
+.profile-app {
+  display: grid;
+  gap: 12px;
+}
+
 .panel-title {
-  margin: 0 0 14px;
-  font-size: 17px;
+  margin: 0 0 12px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .chart {
   width: 100%;
-  height: 320px;
-}
-
-.tag {
-  margin-right: 8px;
-  margin-bottom: 8px;
-}
-
-.spaced {
-  margin-top: 20px;
+  height: 240px;
 }
 
 .notice-header {
@@ -279,9 +270,8 @@ async function submitPassword() {
 }
 
 .notice-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+  display: grid;
+  gap: 6px;
   padding: 8px 10px;
   border-radius: 10px;
   background: rgba(250, 244, 236, 0.6);
@@ -294,7 +284,43 @@ async function submitPassword() {
 
 .notice-actions {
   display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+.history-list {
+  display: grid;
   gap: 8px;
-  flex-shrink: 0;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(250, 244, 236, 0.6);
+}
+
+.history-item p {
+  margin: 0;
+  font-size: 13px;
+  color: #4f4337;
+}
+
+.history-item span {
+  color: #7f654c;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.favorite-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag {
+  margin: 0;
 }
 </style>

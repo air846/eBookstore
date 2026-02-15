@@ -1,5 +1,4 @@
-<script setup lang="ts">
-// 书库列表：分类筛选、搜索与分页
+﻿<script setup lang="ts">
 import { onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import request from "../utils/request";
@@ -23,7 +22,7 @@ const total = ref(0);
 const loading = ref(false);
 const query = reactive({
   page: 1,
-  size: 12,
+  size: 10,
   keyword: "",
   categoryId: undefined as number | undefined,
   sortBy: "create_time",
@@ -51,8 +50,8 @@ async function loadBooks() {
   loading.value = true;
   try {
     const res = await request.get("/book/list", { params: query });
-    books.value = res.data.records;
-    total.value = res.data.total;
+    books.value = Array.isArray(res.data?.records) ? res.data.records : [];
+    total.value = Number(res.data?.total || 0);
   } finally {
     loading.value = false;
   }
@@ -65,108 +64,125 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page-shell">
-    <h1 class="page-title">书库检索</h1>
-    <p class="page-subtitle">按分类与关键词快速筛选你想读的书。</p>
+  <div class="page-shell books-app">
+    <h1 class="page-title">书库</h1>
+    <p class="page-subtitle">发现下一本要读的书</p>
 
-    <el-row :gutter="20">
-      <el-col :xs="24" :md="6">
-        <el-card class="filter-card">
-          <h3 class="panel-title">分类筛选</h3>
-          <el-menu class="menu">
-            <el-menu-item @click="query.categoryId = undefined; query.page = 1; loadBooks()">全部</el-menu-item>
-            <el-menu-item
-              v-for="item in flatCategories"
-              :key="item.id"
-              @click="query.categoryId = item.id; query.page = 1; loadBooks()"
-            >
-              <span class="category-name" :style="{ paddingLeft: `${item.level * 14}px` }">
-                {{ item.level > 0 ? "└ " : "" }}{{ item.name }}
-              </span>
-            </el-menu-item>
-          </el-menu>
-        </el-card>
-      </el-col>
+    <el-card class="search-card">
+      <el-input v-model="query.keyword" placeholder="输入书名或作者" clearable />
+      <div class="search-row">
+        <el-select v-model="query.sortBy" @change="query.page = 1; loadBooks()">
+          <el-option label="最新上架" value="create_time" />
+          <el-option label="最多阅读" value="visit_count" />
+        </el-select>
+        <el-button type="primary" @click="query.page = 1; loadBooks()">搜索</el-button>
+      </div>
+      <div class="category-scroll">
+        <button
+          :class="{ active: query.categoryId === undefined }"
+          @click="query.categoryId = undefined; query.page = 1; loadBooks()"
+        >
+          全部
+        </button>
+        <button
+          v-for="item in flatCategories"
+          :key="item.id"
+          :class="{ active: query.categoryId === item.id }"
+          @click="query.categoryId = item.id; query.page = 1; loadBooks()"
+        >
+          {{ item.name }}
+        </button>
+      </div>
+    </el-card>
 
-      <el-col :xs="24" :md="18">
-        <el-card class="search-card">
-          <el-space wrap>
-            <el-input v-model="query.keyword" placeholder="输入书名或作者" clearable style="width: 280px" />
-            <el-select v-model="query.sortBy" style="width: 160px" @change="query.page = 1; loadBooks()">
-              <el-option label="最新上架" value="create_time" />
-              <el-option label="最多阅读" value="visit_count" />
-            </el-select>
-            <el-button type="primary" @click="query.page = 1; loadBooks()">搜索</el-button>
-          </el-space>
-        </el-card>
+    <div v-if="loading" class="grid">
+      <el-skeleton v-for="n in 6" :key="n" animated class="book-skeleton">
+        <template #template>
+          <el-skeleton-item variant="image" style="width: 100%; aspect-ratio: 3 / 4; border-radius: 10px" />
+          <el-skeleton-item variant="text" style="margin-top: 8px; width: 80%" />
+          <el-skeleton-item variant="text" style="margin-top: 4px; width: 54%" />
+        </template>
+      </el-skeleton>
+    </div>
 
-        <el-row v-loading="loading" :gutter="20" class="grid">
-          <el-col v-for="book in books" :key="book.id" :xs="24" :sm="12" :md="8">
-            <el-card class="book-card" @click="router.push(`/book/${book.id}`)">
-              <img :src="book.coverUrl" class="cover" />
-              <div class="title">{{ book.title }}</div>
-              <div class="meta">{{ book.author }}</div>
-            </el-card>
-          </el-col>
-        </el-row>
+    <div v-else class="grid">
+      <el-card v-for="book in books" :key="book.id" class="book-card" @click="router.push(`/book/${book.id}`)">
+        <img :src="book.coverUrl" class="cover" />
+        <div class="title">{{ book.title }}</div>
+        <div class="meta">{{ book.author }}</div>
+      </el-card>
+    </div>
 
-        <div class="pager">
-          <el-pagination
-            v-model:current-page="query.page"
-            v-model:page-size="query.size"
-            layout="total, prev, pager, next"
-            :total="total"
-            @current-change="loadBooks"
-          />
-        </div>
-      </el-col>
-    </el-row>
+    <el-empty v-if="!loading && books.length === 0" description="暂无书籍" />
+
+    <div class="pager">
+      <el-pagination
+        v-model:current-page="query.page"
+        v-model:page-size="query.size"
+        layout="prev, pager, next"
+        :total="total"
+        @current-change="loadBooks"
+      />
+    </div>
   </div>
 </template>
 
 <style scoped>
-.filter-card,
+.books-app {
+  display: grid;
+  gap: 14px;
+}
+
 .search-card {
-  padding: 8px;
+  padding: 12px;
 }
 
-.panel-title {
-  margin: 6px 0 10px;
-  font-size: 16px;
-  font-weight: 600;
+.search-row {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
 }
 
-.menu {
-  border-right: none;
-  background: transparent;
+.category-scroll {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 2px;
 }
 
-.menu :deep(.el-menu-item) {
-  border-radius: 8px;
-  margin-bottom: 4px;
-}
-
-.category-name {
-  display: inline-block;
+.category-scroll button {
+  border: 1px solid rgba(125, 102, 78, 0.16);
+  border-radius: 999px;
+  background: #fff;
+  color: #6b5a49;
+  font-size: 12px;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  width: 100%;
+  padding: 6px 12px;
+}
+
+.category-scroll button.active {
+  color: #fff;
+  background: #9a7f62;
+  border-color: #9a7f62;
 }
 
 .grid {
-  margin-top: 18px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
 }
 
 .book-card {
   cursor: pointer;
-  margin-bottom: 18px;
   border-radius: 14px;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .book-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 24px rgba(84, 63, 43, 0.12);
 }
 
 .cover {
@@ -190,7 +206,11 @@ onMounted(async () => {
 
 .pager {
   display: flex;
-  justify-content: flex-end;
+  justify-content: center;
   margin: 10px 0 0;
+}
+
+.book-skeleton {
+  width: 100%;
 }
 </style>

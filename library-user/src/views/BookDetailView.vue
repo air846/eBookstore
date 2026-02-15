@@ -1,5 +1,4 @@
-<script setup lang="ts">
-// 书籍详情：展示简介、章节入口与收藏操作
+﻿<script setup lang="ts">
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { ElMessage } from "element-plus";
@@ -14,7 +13,7 @@ async function loadDetail() {
   loading.value = true;
   try {
     const res = await request.get(`/book/detail/${route.params.id}`);
-    detail.value = res.data;
+    detail.value = res.data || {};
   } finally {
     loading.value = false;
   }
@@ -35,32 +34,31 @@ onMounted(loadDetail);
 <template>
   <div class="page-shell detail" v-loading="loading">
     <el-card class="detail-card">
-      <el-row :gutter="30">
-        <el-col :xs="24" :md="8">
-          <img :src="detail.coverUrl" class="cover" />
-        </el-col>
-        <el-col :xs="24" :md="16">
-          <h1 class="page-title title">{{ detail.title }}</h1>
-          <div class="meta-grid">
-            <p><span class="label">作者</span>{{ detail.author || "-" }}</p>
-            <p><span class="label">出版社</span>{{ detail.publisher || "-" }}</p>
-            <p><span class="label">ISBN</span>{{ detail.isbn || "-" }}</p>
-            <p><span class="label">文件类型</span>{{ detail.fileType || "-" }}</p>
-          </div>
-          <p class="desc">{{ detail.description || "暂无简介" }}</p>
-          <el-space size="large">
-            <el-button type="primary" size="large" @click="readBook">立即阅读</el-button>
-            <el-button size="large" @click="favorite">收藏</el-button>
-          </el-space>
-        </el-col>
-      </el-row>
+      <img :src="detail.coverUrl" class="cover" />
+      <h1 class="page-title title">{{ detail.title || "书籍详情" }}</h1>
+
+      <div class="meta-grid">
+        <p><span class="label">作者</span>{{ detail.author || "-" }}</p>
+        <p><span class="label">出版社</span>{{ detail.publisher || "-" }}</p>
+        <p><span class="label">ISBN</span>{{ detail.isbn || "-" }}</p>
+        <p><span class="label">文件类型</span>{{ detail.fileType || "-" }}</p>
+      </div>
+
+      <p class="desc">{{ detail.description || "暂无简介" }}</p>
     </el-card>
+
+    <div class="action-bar">
+      <el-button size="large" @click="favorite">收藏</el-button>
+      <el-button type="primary" size="large" @click="readBook">立即阅读</el-button>
+    </div>
   </div>
 </template>
 
 <style scoped>
 .detail {
-  padding-top: 8px;
+  display: grid;
+  gap: 12px;
+  padding-bottom: 12px;
 }
 
 .detail-card {
@@ -69,6 +67,9 @@ onMounted(loadDetail);
 
 .cover {
   width: 100%;
+  max-width: 220px;
+  margin: 2px auto 14px;
+  display: block;
   aspect-ratio: 3 / 4;
   border-radius: 14px;
   object-fit: cover;
@@ -77,6 +78,7 @@ onMounted(loadDetail);
 
 .title {
   margin-bottom: 14px;
+  font-size: 24px;
 }
 
 .meta-grid p {
@@ -86,13 +88,29 @@ onMounted(loadDetail);
 
 .label {
   display: inline-block;
-  width: 88px;
+  width: 74px;
   color: var(--text-muted);
 }
 
 .desc {
-  margin: 18px 0 24px;
-  line-height: 1.95;
+  margin: 18px 0 6px;
+  line-height: 1.8;
   color: #4f4337;
+}
+
+.action-bar {
+  position: sticky;
+  bottom: 76px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  padding: 10px;
+  border-radius: 14px;
+  background: rgba(255, 251, 245, 0.9);
+  border: 1px solid rgba(125, 102, 78, 0.12);
+}
+
+.action-bar :deep(.el-button) {
+  margin: 0;
 }
 </style>
