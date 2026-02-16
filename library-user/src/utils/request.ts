@@ -2,9 +2,16 @@ import axios from "axios";
 import { ElMessage } from "element-plus";
 
 // 用户端请求封装：统一 baseURL、超时、鉴权与错误提示
+const apiServer = import.meta.env.VITE_API_SERVER || "http://localhost";
+const apiPort = import.meta.env.VITE_API_PORT || "8080";
+const apiPrefix = import.meta.env.VITE_API_PREFIX || "/api";
+const normalizedApiPrefix = apiPrefix.startsWith("/") ? apiPrefix : `/${apiPrefix}`;
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL || `${apiServer}:${apiPort}${normalizedApiPrefix}`;
+
 const request = axios.create({
-  baseURL: "http://localhost:8080/api",
-  timeout: 10000
+  baseURL: apiBaseUrl,
+  timeout: 60000
 });
 
 request.interceptors.request.use((config) => {

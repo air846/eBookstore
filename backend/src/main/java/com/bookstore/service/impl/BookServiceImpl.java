@@ -23,6 +23,8 @@ import com.bookstore.mapper.VisitLogMapper;
 import com.bookstore.service.BookService;
 import com.bookstore.vo.PreferenceStatVO;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
@@ -48,6 +50,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 // 书籍业务实现：查询、章节、收藏与阅读记录
 public class BookServiceImpl implements BookService {
+
+    private static final Logger log = LoggerFactory.getLogger(BookServiceImpl.class);
+    private static final Pattern TXT_CHAPTER_TITLE_PATTERN = Pattern.compile(
+            "^(?:(?:正文\\s*)?第\\s*[0-9零〇○一二三四五六七八九十百千万两ivxlcdm]+\\s*[章节卷篇部回节集]\\s*[:：,，.、\\-—]?\\s*.*"
+                    + "|(?:序章|楔子|引子|前言|后记|终章|尾声|番外)\\s*.*"
+                    + "|(?:(?:chapter|chap\\.?|prologue|epilogue)\\s*[0-9ivxlcdm]+\\s*[:：,，.、\\-—]?\\s*.*))$",
+            Pattern.CASE_INSENSITIVE);
 
     private final BookMapper bookMapper;
     private final BookChapterMapper bookChapterMapper;
@@ -97,12 +106,12 @@ public class BookServiceImpl implements BookService {
         book.setVisitCount(currentCount + 1);
         bookMapper.updateById(book);
 
-        VisitLog log = new VisitLog();
-        log.setUserId(userId);
-        log.setIp(ip);
-        log.setUrl("/api/book/read/" + bookId);
-        log.setVisitTime(LocalDateTime.now());
-        visitLogMapper.insert(log);
+        VisitLog visitLog = new VisitLog();
+        visitLog.setUserId(userId);
+        visitLog.setIp(ip);
+        visitLog.setUrl("/api/book/read/" + bookId);
+        visitLog.setVisitTime(LocalDateTime.now());
+        visitLogMapper.insert(visitLog);
         return book.getFileUrl();
     }
 
@@ -146,7 +155,10 @@ public class BookServiceImpl implements BookService {
             throw new BizException(400, "仅支持 TXT 书籍导入章节");
         }
         String content = readTxtContent(bookId);
+        long splitStartNs = System.nanoTime();
         List<BookChapter> parsed = parseTxtChapters(content, bookId);
+        long splitCostMs = (System.nanoTime() - splitStartNs) / 1_000_000;
+        log.info("TXT 分章完成, bookId={}, chapterCount={}, costMs={}", bookId, parsed.size(), splitCostMs);
         if (parsed.isEmpty()) {
             throw new BizException(400, "TXT 内容为空，无法导入章节");
         }
@@ -447,14 +459,13 @@ public class BookServiceImpl implements BookService {
             return Collections.emptyList();
         }
         List<String> lines = List.of(content.split("\n", -1));
-        Pattern titlePattern = Pattern.compile("^(第[0-9一二三四五六七八九十百千万零两]+[章节卷篇部回].*|(?:chapter|chap\\.?)\\s*\\d+.*)$", Pattern.CASE_INSENSITIVE);
         List<Integer> titleIndexes = new ArrayList<>();
         for (int i = 0; i < lines.size(); i++) {
             String text = lines.get(i).trim();
             if (text.isEmpty() || text.length() > 60) {
                 continue;
             }
-            if (titlePattern.matcher(text).matches()) {
+            if (TXT_CHAPTER_TITLE_PATTERN.matcher(text).matches()) {
                 titleIndexes.add(i);
             }
         }
@@ -476,7 +487,9 @@ public class BookServiceImpl implements BookService {
                 }
                 chapters.add(newTxtChapter(bookId, StringUtils.hasText(title) ? title : ("第" + (i + 1) + "章"), body, chapters.size() + 1));
             }
-            return chapters;
+            if (!chapters.isEmpty()) {
+                return chapters;
+            }
         }
 
         int maxChars = 8000;
@@ -499,6 +512,10 @@ public class BookServiceImpl implements BookService {
         }
         if (buffer.length() > 0) {
             chapters.add(newTxtChapter(bookId, "第" + partIndex + "节", buffer.toString().trim(), chapters.size() + 1));
+        }
+        if (chapters.isEmpty()) {
+            log.warn("TXT 分章未命中标题，兜底返回单章, bookId={}", bookId);
+            chapters.add(newTxtChapter(bookId, "正文", content, 1));
         }
         return chapters;
     }

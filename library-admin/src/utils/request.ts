@@ -1,14 +1,19 @@
 import axios from "axios";
 import { ElMessage } from "element-plus";
 
-// 管理端请求封装：统一鉴权与错误提示
+const apiServer = import.meta.env.VITE_API_SERVER || "http://localhost";
+const apiPort = import.meta.env.VITE_API_PORT || "8080";
+const apiPrefix = import.meta.env.VITE_API_PREFIX || "/api";
+const normalizedApiPrefix = apiPrefix.startsWith("/") ? apiPrefix : `/${apiPrefix}`;
+const apiBaseUrl =
+  import.meta.env.VITE_API_BASE_URL || `${apiServer}:${apiPort}${normalizedApiPrefix}`;
+
 const request = axios.create({
-  baseURL: "http://localhost:8080/api",
-  timeout: 10000
+  baseURL: apiBaseUrl,
+  timeout: 60000
 });
 
 request.interceptors.request.use((config) => {
-  // 自动携带管理员令牌
   const token = localStorage.getItem("ebookstore_admin_token");
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -18,7 +23,6 @@ request.interceptors.request.use((config) => {
 
 request.interceptors.response.use(
   (response) => {
-    // 统一处理业务码
     const payload = response.data;
     if (payload.code !== 200) {
       ElMessage.error(payload.message || "请求失败");
