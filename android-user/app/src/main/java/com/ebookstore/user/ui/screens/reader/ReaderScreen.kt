@@ -225,6 +225,13 @@ fun ReaderScreen(
                             modifier = Modifier
                                 .weight(1f)
                                 .padding(24.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            showToolbars = !showToolbars
+                                        }
+                                    )
+                                }
                         ) { pageIndex ->
                             val pageParagraphs = pagedParagraphs.getOrElse(pageIndex) { emptyList() }
                             Column(
