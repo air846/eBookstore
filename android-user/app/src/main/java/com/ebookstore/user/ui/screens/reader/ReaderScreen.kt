@@ -116,45 +116,55 @@ fun ReaderScreen(
                     .padding(padding)
             ) {
                 // Top Bar
-                Surface(
-                    tonalElevation = 2.dp,
-                    color = backgroundColor.copy(alpha = 0.9f)
+                AnimatedVisibility(
+                    visible = showToolbars,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    Surface(
+                        tonalElevation = 2.dp,
+                        color = backgroundColor.copy(alpha = 0.9f)
                     ) {
-                        IconButton(onClick = onNavigateBack) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "返回",
-                                tint = textColor
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            IconButton(onClick = { showSettings = !showSettings }) {
-                                Icon(Icons.Default.TextFields, contentDescription = "字体", tint = textColor)
-                            }
-                            IconButton(onClick = { viewModel.toggleDarkMode() }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            IconButton(onClick = onNavigateBack) {
                                 Icon(
-                                    if (uiState.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
-                                    contentDescription = "夜间模式",
+                                    Icons.AutoMirrored.Filled.ArrowBack,
+                                    contentDescription = "返回",
                                     tint = textColor
                                 )
                             }
-                            IconButton(onClick = { showChapterDrawer = true }) {
-                                Icon(Icons.Default.List, contentDescription = "章节", tint = textColor)
+
+                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                IconButton(onClick = { showSettings = !showSettings }) {
+                                    Icon(Icons.Default.TextFields, contentDescription = "字体", tint = textColor)
+                                }
+                                IconButton(onClick = { viewModel.toggleDarkMode() }) {
+                                    Icon(
+                                        if (uiState.isDarkMode) Icons.Default.LightMode else Icons.Default.DarkMode,
+                                        contentDescription = "夜间模式",
+                                        tint = textColor
+                                    )
+                                }
+                                IconButton(onClick = { showChapterDrawer = true }) {
+                                    Icon(Icons.Default.List, contentDescription = "章节", tint = textColor)
+                                }
                             }
                         }
                     }
                 }
 
                 // Settings Panel
-                if (showSettings) {
+                AnimatedVisibility(
+                    visible = showSettings && showToolbars,
+                    enter = slideInVertically(initialOffsetY = { -it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { -it }) + fadeOut()
+                ) {
                     Surface(
                         tonalElevation = 1.dp,
                         color = backgroundColor.copy(alpha = 0.95f)
