@@ -24,17 +24,15 @@
     <view wx:if="{{!loading}}">
       <view id="chapterTop"></view>
       <view class="paragraph-block" wx:for="{{paragraphBlocks}}" wx:key="key">
-        <view class="paragraph" style="font-size: {{fontSize}}rpx;" data-start="{{item.start}}" bindlongpress="onParagraphLongPress">
-          <text selectable>{{item.text}}</text>
-          <text
-            class="comment-bubble-inline"
-            wx:if="{{(item.commentCount || 0) > 0}}"
-            data-start="{{item.start}}"
-            bindtap="openComments"
-          >
-            🍅{{item.commentCount}}
-          </text>
-        </view>
+        <text class="paragraph" style="font-size: {{fontSize}}rpx;" data-start="{{item.start}}" bindlongpress="onParagraphLongPress" selectable>{{item.text}}</text>
+        <text
+          class="comment-bubble-inline"
+          wx:if="{{(item.commentCount || 0) > 0}}"
+          data-start="{{item.start}}"
+          bindtap="openComments"
+        >
+          🍅{{item.commentCount}}
+        </text>
       </view>
     </view>
 

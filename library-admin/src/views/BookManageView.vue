@@ -41,11 +41,19 @@ interface CategoryOption {
   level: number;
 }
 
+interface FileUploadResponse {
+  fileUrl: string;
+  originalName: string;
+  size: number;
+}
+
 const loading = ref(false);
 const books = ref<BookRow[]>([]);
 const total = ref(0);
 const dialogVisible = ref(false);
 const editingId = ref<number | null>(null);
+const uploadingFile = ref(false);
+const fileInputRef = ref<HTMLInputElement | null>(null);
 const query = reactive({
   page: 1,
   size: 10,
@@ -152,6 +160,34 @@ function openEdit(row: BookRow) {
     status: row.status ?? 0
   });
   dialogVisible.value = true;
+}
+
+function triggerBookFilePicker() {
+  fileInputRef.value?.click();
+}
+
+async function handleBookFileChange(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const file = input.files?.[0];
+  if (!file) return;
+  const formData = new FormData();
+  formData.append("file", file);
+  uploadingFile.value = true;
+  try {
+    const res = await request.post<FileUploadResponse>("/admin/book/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+    const uploadedUrl = res.data?.fileUrl || "";
+    form.fileUrl = uploadedUrl;
+    const extension = file.name.includes(".") ? file.name.split(".").pop()?.toUpperCase() : "";
+    if (extension === "PDF" || extension === "EPUB" || extension === "TXT") {
+      form.fileType = extension;
+    }
+    ElMessage.success("文件上传成功");
+  } finally {
+    uploadingFile.value = false;
+    input.value = "";
+  }
 }
 
 async function submit() {
@@ -358,7 +394,18 @@ onMounted(async () => {
           <el-col :span="24"><el-form-item label="封面地址"><el-input v-model="form.coverUrl" /></el-form-item></el-col>
           <el-col :span="24">
             <el-form-item label="文件地址">
-              <el-input v-model="form.fileUrl" placeholder="可为空；使用章节模式时可不填" />
+              <el-input v-model="form.fileUrl" placeholder="可为空；使用章节模式时可不填">
+                <template #append>
+                  <el-button :loading="uploadingFile" @click="triggerBookFilePicker">本机上传</el-button>
+                </template>
+              </el-input>
+              <input
+                ref="fileInputRef"
+                class="hidden-file-input"
+                type="file"
+                accept=".pdf,.epub,.txt,application/pdf,application/epub+zip,text/plain"
+                @change="handleBookFileChange"
+              />
             </el-form-item>
           </el-col>
           <el-col :span="24">
@@ -449,5 +496,9 @@ onMounted(async () => {
   display: flex;
   justify-content: space-between;
   margin-bottom: 12px;
+}
+
+.hidden-file-input {
+  display: none;
 }
 </style>

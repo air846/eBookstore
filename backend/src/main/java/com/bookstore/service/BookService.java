@@ -8,7 +8,9 @@ import com.bookstore.dto.HistorySaveRequest;
 import com.bookstore.entity.Book;
 import com.bookstore.entity.BookChapter;
 import com.bookstore.entity.ReadHistory;
+import com.bookstore.vo.FileUploadVO;
 import com.bookstore.vo.PreferenceStatVO;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -23,6 +25,8 @@ public interface BookService {
     String readTxtContent(Long bookId);
 
     Integer importTxtChapters(Long bookId);
+
+    FileUploadVO uploadBookFile(MultipartFile file);
 
     void favorite(Long userId, Long bookId);
 

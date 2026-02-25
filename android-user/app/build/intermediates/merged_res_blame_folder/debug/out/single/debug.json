@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.ebookstore.user.app-merged_res-4:/mipmap_ic_launcher.xml.flat",
+        "source": "com.ebookstore.user.app-main-6:/mipmap/ic_launcher.xml"
+    },
+    {
+        "merged": "com.ebookstore.user.app-merged_res-4:/mipmap_ic_launcher_round.xml.flat",
+        "source": "com.ebookstore.user.app-main-6:/mipmap/ic_launcher_round.xml"
+    }
+]

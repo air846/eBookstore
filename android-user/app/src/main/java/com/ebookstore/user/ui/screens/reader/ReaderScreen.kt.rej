@@ -1,0 +1,19 @@
+--- app/src/main/java/com/ebookstore/user/ui/screens/reader/ReaderScreen.kt
++++ app/src/main/java/com/ebookstore/user/ui/screens/reader/ReaderScreen.kt
+@@ -223,9 +223,16 @@
+                         HorizontalPager(
+                             state = pagerState,
+                             verticalAlignment = Alignment.Top,
+                             modifier = Modifier
+                                 .weight(1f)
+                                 .padding(24.dp)
++                                .pointerInput(Unit) {
++                                    detectTapGestures(
++                                        onTap = {
++                                            showToolbars = !showToolbars
++                                        }
++                                    )
++                                }
+                         ) { pageIndex ->
+                             val pageParagraphs = pagedParagraphs.getOrElse(pageIndex) { emptyList() }
+                             Column(

@@ -59,6 +59,8 @@
   white-space: pre-wrap;
   text-indent: 2em;
   color: #4a392b;
+  word-break: break-all;
+  overflow-wrap: break-word;
 }
 
 .comment-bubble-inline {

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.ebookstore.user.ui.navigation.AppNavigationAuthResolverTest" tests="3" skipped="0" failures="0" errors="0" timestamp="2026-02-25T11:45:38" hostname="DESKTOP-EEKT0PJ" time="0.028">
+  <properties/>
+  <testcase name="resolveInitialRoute_validToken_startsAtHome" classname="com.ebookstore.user.ui.navigation.AppNavigationAuthResolverTest" time="0.025"/>
+  <testcase name="resolveInitialRoute_noToken_startsAtLogin" classname="com.ebookstore.user.ui.navigation.AppNavigationAuthResolverTest" time="0.002"/>
+  <testcase name="resolveInitialRoute_invalidToken_startsAtLogin" classname="com.ebookstore.user.ui.navigation.AppNavigationAuthResolverTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

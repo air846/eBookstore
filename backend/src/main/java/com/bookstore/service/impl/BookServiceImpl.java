@@ -21,13 +21,17 @@ import com.bookstore.mapper.FavoriteMapper;
 import com.bookstore.mapper.ReadHistoryMapper;
 import com.bookstore.mapper.VisitLogMapper;
 import com.bookstore.service.BookService;
+import com.bookstore.vo.FileUploadVO;
 import com.bookstore.vo.PreferenceStatVO;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -43,6 +47,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -57,6 +62,8 @@ public class BookServiceImpl implements BookService {
                     + "|(?:序章|楔子|引子|前言|后记|终章|尾声|番外)\\s*.*"
                     + "|(?:(?:chapter|chap\\.?|prologue|epilogue)\\s*[0-9ivxlcdm]+\\s*[:：,，.、\\-—]?\\s*.*))$",
             Pattern.CASE_INSENSITIVE);
+    private static final Set<String> ALLOWED_UPLOAD_EXTENSIONS = Set.of(".pdf", ".epub", ".txt");
+    private static final String BOOK_UPLOAD_PUBLIC_PREFIX = "/uploads/books/";
 
     private final BookMapper bookMapper;
     private final BookChapterMapper bookChapterMapper;
@@ -64,6 +71,9 @@ public class BookServiceImpl implements BookService {
     private final FavoriteMapper favoriteMapper;
     private final ReadHistoryMapper readHistoryMapper;
     private final VisitLogMapper visitLogMapper;
+
+    @Value("${app.file-storage.base-dir:./uploads}")
+    private String fileStorageBaseDir;
 
     @Override
     public IPage<Book> pageBooks(BookQueryRequest request, boolean adminMode) {
@@ -122,12 +132,11 @@ public class BookServiceImpl implements BookService {
         if (!StringUtils.hasText(fileUrl)) {
             throw new BizException(400, "文件地址为空");
         }
-        String normalizedPath = normalizePath(fileUrl);
-        if (!normalizedPath.toLowerCase().endsWith(".txt")) {
-            throw new BizException(400, "当前仅支持读取 TXT 文件");
-        }
         try {
-            Path path = Paths.get(normalizedPath);
+            Path path = resolveTxtFilePath(fileUrl);
+            if (!path.getFileName().toString().toLowerCase().endsWith(".txt")) {
+                throw new BizException(400, "当前仅支持读取 TXT 文件");
+            }
             if (!Files.exists(path) || !Files.isRegularFile(path)) {
                 throw new BizException(404, "文件不存在");
             }
@@ -171,6 +180,33 @@ public class BookServiceImpl implements BookService {
             bookChapterMapper.insert(item);
         });
         return parsed.size();
+    }
+
+    @Override
+    public FileUploadVO uploadBookFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new BizException(400, "上传文件不能为空");
+        }
+        String originalName = StringUtils.hasText(file.getOriginalFilename()) ? file.getOriginalFilename() : "book-file";
+        String extension = extractFileExtension(originalName);
+        if (!ALLOWED_UPLOAD_EXTENSIONS.contains(extension)) {
+            throw new BizException(400, "仅支持上传 PDF、EPUB、TXT 文件");
+        }
+        Path uploadDir = resolveBookUploadDir();
+        try {
+            Files.createDirectories(uploadDir);
+            String storedName = UUID.randomUUID().toString().replace("-", "") + extension;
+            Path targetPath = uploadDir.resolve(storedName).normalize();
+            if (!targetPath.startsWith(uploadDir)) {
+                throw new BizException(400, "非法文件路径");
+            }
+            file.transferTo(targetPath.toFile());
+            return new FileUploadVO(BOOK_UPLOAD_PUBLIC_PREFIX + storedName, originalName, file.getSize());
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(500, "上传失败: " + ex.getMessage());
+        }
     }
 
     @Override
@@ -443,6 +479,50 @@ public class BookServiceImpl implements BookService {
             throw new BizException(404, "chapter not found");
         }
         return chapter;
+    }
+
+    private Path resolveBookUploadDir() {
+        return Paths.get(fileStorageBaseDir).toAbsolutePath().normalize().resolve("books").normalize();
+    }
+
+    private String extractFileExtension(String fileName) {
+        String normalized = StringUtils.hasText(fileName) ? fileName.trim() : "";
+        int index = normalized.lastIndexOf('.');
+        if (index < 0 || index == normalized.length() - 1) {
+            return "";
+        }
+        return normalized.substring(index).toLowerCase();
+    }
+
+    private Path resolveTxtFilePath(String fileUrl) {
+        String normalizedPath = normalizePath(fileUrl);
+        if (normalizedPath.startsWith("http://") || normalizedPath.startsWith("https://")) {
+            try {
+                URI uri = URI.create(normalizedPath);
+                normalizedPath = uri.getPath();
+            } catch (Exception ex) {
+                throw new BizException(400, "文件地址格式不正确");
+            }
+        }
+
+        if (normalizedPath.startsWith(BOOK_UPLOAD_PUBLIC_PREFIX)) {
+            String relativePath = normalizedPath.substring(BOOK_UPLOAD_PUBLIC_PREFIX.length());
+            return resolveBookUploadFilePath(relativePath);
+        }
+        if (normalizedPath.startsWith(BOOK_UPLOAD_PUBLIC_PREFIX.substring(1))) {
+            String relativePath = normalizedPath.substring(BOOK_UPLOAD_PUBLIC_PREFIX.length() - 1);
+            return resolveBookUploadFilePath(relativePath);
+        }
+        return Paths.get(normalizedPath);
+    }
+
+    private Path resolveBookUploadFilePath(String relativePath) {
+        Path uploadDir = resolveBookUploadDir();
+        Path resolvedPath = uploadDir.resolve(relativePath).normalize();
+        if (!resolvedPath.startsWith(uploadDir)) {
+            throw new BizException(400, "非法文件路径");
+        }
+        return resolvedPath;
     }
 
     private String normalizePath(String path) {

@@ -5,6 +5,7 @@ import com.bookstore.dto.BookQueryRequest;
 import com.bookstore.dto.BookSaveRequest;
 import com.bookstore.dto.ChapterSaveRequest;
 import com.bookstore.service.BookService;
+import com.bookstore.vo.FileUploadVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/admin/book")
@@ -82,5 +84,10 @@ public class AdminBookController {
     @PostMapping("/{bookId}/chapters/import-txt")
     public ApiResponse<Integer> importTxt(@PathVariable Long bookId) {
         return ApiResponse.success(bookService.importTxtChapters(bookId));
+    }
+
+    @PostMapping("/upload")
+    public ApiResponse<FileUploadVO> upload(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success(bookService.uploadBookFile(file));
     }
 }

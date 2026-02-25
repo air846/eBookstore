@@ -6,9 +6,17 @@ spring:
     name: ebookstore-backend
   datasource:
     url: jdbc:mysql://49.235.45.42/ebookstore?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: root
-    password: mysql_XbfjcT
+    username: ebookstore
+    password: 123456
     driver-class-name: com.mysql.cj.jdbc.Driver
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+app:
+  file-storage:
+    base-dir: ${BOOK_FILE_BASE_DIR:./uploads}
 
 mybatis-plus:
   configuration:

@@ -450,20 +450,6 @@ fun ReaderScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             if (uiState.readerMode == ReaderMode.PAGED) {
-                                OutlinedButton(
-                                    onClick = { previousPageOrChapter() },
-                                    enabled = canGoPrevPage,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("上一页")
-                                }
-                                OutlinedButton(
-                                    onClick = { nextPageOrChapter() },
-                                    enabled = canGoNextPage,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("下一页")
-                                }
                                 if (!canGoNextPage) {
                                     OutlinedButton(
                                         onClick = {
@@ -479,20 +465,6 @@ fun ReaderScreen(
                                     }
                                 }
                             } else {
-                                OutlinedButton(
-                                    onClick = { viewModel.prevChapter() },
-                                    enabled = canGoPrevChapter,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("上一章")
-                                }
-                                OutlinedButton(
-                                    onClick = { viewModel.nextChapter() },
-                                    enabled = canGoNextChapter,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("下一章")
-                                }
                                 if (!canGoNextChapter) {
                                     OutlinedButton(
                                         onClick = {
