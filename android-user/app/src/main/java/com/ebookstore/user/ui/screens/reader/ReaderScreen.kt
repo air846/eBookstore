@@ -305,106 +305,114 @@ fun ReaderScreen(
                 }
 
                 // Bottom Bar
-                Surface(
-                    tonalElevation = 2.dp,
-                    color = backgroundColor.copy(alpha = 0.9f)
+                AnimatedVisibility(
+                    visible = showToolbars,
+                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp)
+                    Surface(
+                        tonalElevation = 2.dp,
+                        color = backgroundColor.copy(alpha = 0.9f)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "CHAPTER ${(uiState.currentChapterIndex + 1).toString().padStart(2, '0')}",
-                                fontSize = 11.sp,
-                                color = textColor.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = if (uiState.readerMode == ReaderMode.PAGED) {
-                                    "PAGE $currentPageDisplay/$pageCount"
-                                } else {
-                                    "滚动模式"
-                                },
-                                fontSize = 11.sp,
-                                color = textColor.copy(alpha = 0.7f)
-                            )
-                        }
-
-                        LinearProgressIndicator(
-                            progress = { readingProgress },
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp),
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                .padding(12.dp)
                         ) {
-                            if (uiState.readerMode == ReaderMode.PAGED) {
-                                OutlinedButton(
-                                    onClick = { previousPageOrChapter() },
-                                    enabled = canGoPrevPage,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("上一页")
-                                }
-                                OutlinedButton(
-                                    onClick = { nextPageOrChapter() },
-                                    enabled = canGoNextPage,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("下一页")
-                                }
-                                if (!canGoNextPage) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = "CHAPTER ${(uiState.currentChapterIndex + 1).toString().padStart(2, '0')}",
+                                    fontSize = 11.sp,
+                                    color = textColor.copy(alpha = 0.7f)
+                                )
+                                Text(
+                                    text = if (uiState.readerMode == ReaderMode.PAGED) {
+                                        "PAGE $currentPageDisplay/$pageCount"
+                                    } else {
+                                        "滚动模式"
+                                    },
+                                    fontSize = 11.sp,
+                                    color = textColor.copy(alpha = 0.7f)
+                                )
+                            }
+
+                            LinearProgressIndicator(
+                                progress = { readingProgress },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 6.dp),
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                if (uiState.readerMode == ReaderMode.PAGED) {
                                     OutlinedButton(
-                                        onClick = {
-                                            viewModel.urgeUpdate {
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("催更成功，已通知管理员")
-                                                }
-                                            }
-                                        },
+                                        onClick = { previousPageOrChapter() },
+                                        enabled = canGoPrevPage,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("催更")
+                                        Text("上一页")
                                     }
-                                }
-                            } else {
-                                OutlinedButton(
-                                    onClick = { viewModel.prevChapter() },
-                                    enabled = canGoPrevChapter,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("上一章")
-                                }
-                                OutlinedButton(
-                                    onClick = { viewModel.nextChapter() },
-                                    enabled = canGoNextChapter,
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("下一章")
-                                }
-                                if (!canGoNextChapter) {
                                     OutlinedButton(
-                                        onClick = {
-                                            viewModel.urgeUpdate {
-                                                scope.launch {
-                                                    snackbarHostState.showSnackbar("催更成功，已通知管理员")
-                                                }
-                                            }
-                                        },
+                                        onClick = { nextPageOrChapter() },
+                                        enabled = canGoNextPage,
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("催更")
+                                        Text("下一页")
+                                    }
+                                    if (!canGoNextPage) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.urgeUpdate {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("催更成功,已通知管理员")
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("催更")
+                                        }
+                                    }
+                                } else {
+                                    OutlinedButton(
+                                        onClick = { viewModel.prevChapter() },
+                                        enabled = canGoPrevChapter,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("上一章")
+                                    }
+                                    OutlinedButton(
+                                        onClick = { viewModel.nextChapter() },
+                                        enabled = canGoNextChapter,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("下一章")
+                                    }
+                                    if (!canGoNextChapter) {
+                                        OutlinedButton(
+                                            onClick = {
+                                                viewModel.urgeUpdate {
+                                                    scope.launch {
+                                                        snackbarHostState.showSnackbar("催更成功,已通知管理员")
+                                                    }
+                                                }
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        ) {
+                                            Text("催更")
+                                        }
                                     }
                                 }
                             }
                         }
+                    }
+                }
                     }
                 }
             }
