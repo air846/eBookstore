@@ -1,6 +1,8 @@
 package com.ebookstore.user.ui.screens.profile
 
+import android.Manifest
 import android.net.Uri
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -36,6 +38,19 @@ fun ProfileScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            imagePickerLauncher.launch("image/*")
+        } else {
+            scope.launch {
+                snackbarHostState.showSnackbar("需要存储权限才能选择图片")
+            }
+        }
+    }
 
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -128,7 +143,15 @@ fun ProfileScreen(
                                 modifier = Modifier
                                     .size(80.dp)
                                     .clip(CircleShape)
-                                    .clickable { imagePickerLauncher.launch("image/*") }
+                                    .clickable {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                            permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                                        } else {
+                                            imagePickerLauncher.launch("image/*")
+                                        }
+                                    }
                             ) {
                                 AsyncImage(
                                     model = uiState.avatar.ifEmpty { "https://via.placeholder.com/150" },
@@ -154,7 +177,15 @@ fun ProfileScreen(
                                     style = MaterialTheme.typography.bodyMedium
                                 )
                                 TextButton(
-                                    onClick = { imagePickerLauncher.launch("image/*") },
+                                    onClick = {
+                                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                            permissionLauncher.launch(Manifest.permission.READ_MEDIA_IMAGES)
+                                        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                                            permissionLauncher.launch(Manifest.permission.READ_EXTERNAL_STORAGE)
+                                        } else {
+                                            imagePickerLauncher.launch("image/*")
+                                        }
+                                    },
                                     enabled = !uiState.isUploading
                                 ) {
                                     Icon(
