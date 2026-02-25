@@ -49,7 +49,7 @@ fun ReaderScreen(
     var showChapterDrawer by remember { mutableStateOf(false) }
     var showSettings by remember { mutableStateOf(false) }
     var showCommentDrawer by remember { mutableStateOf(false) }
-    var showToolbars by remember { mutableStateOf(true) }
+    var showToolbars by remember { mutableStateOf(false) }
 
     LaunchedEffect(bookId) {
         viewModel.loadBook(bookId, initialChapter)
