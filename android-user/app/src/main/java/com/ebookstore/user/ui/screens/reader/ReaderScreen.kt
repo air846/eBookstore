@@ -270,7 +270,14 @@ fun ReaderScreen(
                             state = scrollListState,
                             modifier = Modifier
                                 .weight(1f)
-                                .padding(horizontal = 24.dp, vertical = 12.dp),
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            showToolbars = !showToolbars
+                                        }
+                                    )
+                                },
                             verticalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             item(key = "chapter-title-${currentChapter.id}") {
