@@ -19,7 +19,8 @@ html,
 body,
 #app {
   margin: 0;
-  min-height: 100%;
+  min-height: 100vh;
+  height: 100%;
   color: var(--text-main);
   background: radial-gradient(circle at top right, #fdf7ee, #f6f2ea 40%, #f3efe8 100%);
   font-family: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "PingFang SC", "Microsoft YaHei", serif;

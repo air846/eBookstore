@@ -1,16 +1,29 @@
 package com.ebookstore.user.ui.screens.profile
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import kotlinx.coroutines.launch
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,6 +35,43 @@ fun ProfileScreen(
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val imagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                val file = File(context.cacheDir, "avatar_${System.currentTimeMillis()}.jpg")
+                inputStream?.use { input ->
+                    FileOutputStream(file).use { output ->
+                        input.copyTo(output)
+                    }
+                }
+
+                viewModel.uploadAvatar(
+                    file = file,
+                    onSuccess = {
+                        scope.launch {
+                            snackbarHostState.showSnackbar("头像上传成功")
+                        }
+                        file.delete()
+                    },
+                    onError = { error ->
+                        scope.launch {
+                            snackbarHostState.showSnackbar("上传失败: $error")
+                        }
+                        file.delete()
+                    }
+                )
+            } catch (e: Exception) {
+                scope.launch {
+                    snackbarHostState.showSnackbar("读取图片失败: ${e.message}")
+                }
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -68,6 +118,56 @@ fun ProfileScreen(
                             style = MaterialTheme.typography.titleMedium
                         )
 
+                        // Avatar section
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape)
+                                    .clickable { imagePickerLauncher.launch("image/*") }
+                            ) {
+                                AsyncImage(
+                                    model = uiState.avatar.ifEmpty { "https://via.placeholder.com/150" },
+                                    contentDescription = "头像",
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                                if (uiState.isUploading) {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        androidx.compose.material.CircularProgressIndicator(
+                                            modifier = Modifier.size(30.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            Column {
+                                Text(
+                                    text = "点击头像上传",
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                TextButton(
+                                    onClick = { imagePickerLauncher.launch("image/*") },
+                                    enabled = !uiState.isUploading
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.CameraAlt,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("选择图片")
+                                }
+                            }
+                        }
+
                         OutlinedTextField(
                             value = uiState.user?.username ?: "",
                             onValueChange = {},
@@ -87,13 +187,6 @@ fun ProfileScreen(
                             value = uiState.email,
                             onValueChange = viewModel::onEmailChange,
                             label = { Text("邮箱") },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        OutlinedTextField(
-                            value = uiState.avatar,
-                            onValueChange = viewModel::onAvatarChange,
-                            label = { Text("头像 URL") },
                             modifier = Modifier.fillMaxWidth()
                         )
 

@@ -11,6 +11,7 @@ import com.bookstore.entity.User;
 import com.bookstore.mapper.UserMapper;
 import com.bookstore.security.JwtTokenProvider;
 import com.bookstore.service.AuthService;
+import com.bookstore.vo.FileUploadVO;
 import com.bookstore.vo.LoginVO;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,17 +21,26 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 // 认证服务：注册、登录与令牌生成
 public class AuthServiceImpl implements AuthService {
+
+    private static final Set<String> ALLOWED_AVATAR_EXTENSIONS = Set.of(".jpg", ".jpeg", ".png", ".gif");
+    private static final String AVATAR_UPLOAD_PUBLIC_PREFIX = "/uploads/avatars/";
+    private static final long MAX_AVATAR_SIZE = 5 * 1024 * 1024; // 5MB
 
     private final UserMapper userMapper;
     private final JwtTokenProvider jwtTokenProvider;
@@ -43,6 +53,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${wechat.miniapp.secret:}")
     private String miniAppSecret;
+
+    @Value("${app.file-storage.base-dir:./uploads}")
+    private String fileStorageBaseDir;
 
     @Override
     public LoginVO userLogin(LoginRequest request) {
@@ -186,6 +199,65 @@ public class AuthServiceImpl implements AuthService {
         }
         user.setPassword(encoder.encode(request.getNewPassword()));
         userMapper.updateById(user);
+    }
+
+    @Override
+    public FileUploadVO uploadAvatar(Long userId, MultipartFile file) {
+        User user = getUserOrThrow(userId);
+
+        if (file == null || file.isEmpty()) {
+            throw new BizException(400, "上传文件不能为空");
+        }
+
+        if (file.getSize() > MAX_AVATAR_SIZE) {
+            throw new BizException(400, "头像文件大小不能超过5MB");
+        }
+
+        String originalName = StringUtils.hasText(file.getOriginalFilename())
+                ? file.getOriginalFilename() : "avatar";
+        String extension = extractFileExtension(originalName);
+
+        if (!ALLOWED_AVATAR_EXTENSIONS.contains(extension)) {
+            throw new BizException(400, "仅支持上传 JPG、PNG、GIF 格式的图片");
+        }
+
+        Path uploadDir = resolveAvatarUploadDir();
+        try {
+            Files.createDirectories(uploadDir);
+            String storedName = UUID.randomUUID().toString().replace("-", "") + extension;
+            Path targetPath = uploadDir.resolve(storedName).normalize();
+
+            if (!targetPath.startsWith(uploadDir)) {
+                throw new BizException(400, "非法文件路径");
+            }
+
+            file.transferTo(targetPath.toFile());
+
+            String avatarUrl = AVATAR_UPLOAD_PUBLIC_PREFIX + storedName;
+            user.setAvatar(avatarUrl);
+            userMapper.updateById(user);
+
+            return new FileUploadVO(avatarUrl, originalName, file.getSize());
+        } catch (BizException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            throw new BizException(500, "上传失败: " + ex.getMessage());
+        }
+    }
+
+    private String extractFileExtension(String filename) {
+        if (!StringUtils.hasText(filename)) {
+            return "";
+        }
+        int dotIndex = filename.lastIndexOf('.');
+        if (dotIndex < 0 || dotIndex == filename.length() - 1) {
+            return "";
+        }
+        return filename.substring(dotIndex).toLowerCase();
+    }
+
+    private Path resolveAvatarUploadDir() {
+        return Paths.get(fileStorageBaseDir).resolve("avatars").toAbsolutePath().normalize();
     }
 
     private User checkUser(String username, String password) {

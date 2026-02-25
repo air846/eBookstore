@@ -135,3 +135,7 @@ data class UpdatePasswordRequest(
     val newPassword: String,
     val confirmPassword: String
 )
+
+data class FileUploadResponse(
+    val url: String
+)

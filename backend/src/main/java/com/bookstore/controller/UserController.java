@@ -8,6 +8,7 @@ import com.bookstore.dto.RegisterRequest;
 import com.bookstore.dto.UserInfoUpdateRequest;
 import com.bookstore.dto.UserPasswordUpdateRequest;
 import com.bookstore.service.AuthService;
+import com.bookstore.vo.FileUploadVO;
 import com.bookstore.vo.LoginVO;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -16,7 +17,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/user")
@@ -55,6 +58,11 @@ public class UserController {
     public ApiResponse<Void> updatePassword(@Valid @RequestBody UserPasswordUpdateRequest request) {
         authService.updatePassword(UserContext.getUserId(), request);
         return ApiResponse.success();
+    }
+
+    @PostMapping("/avatar")
+    public ApiResponse<FileUploadVO> uploadAvatar(@RequestParam("file") MultipartFile file) {
+        return ApiResponse.success(authService.uploadAvatar(UserContext.getUserId(), file));
     }
 
     @PostMapping("/logout")

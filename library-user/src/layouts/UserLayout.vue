@@ -90,6 +90,8 @@ function onTabClick(path: string, event: MouseEvent) {
   margin: 0 auto;
   background: rgba(255, 251, 245, 0.5);
   box-shadow: 0 0 0 1px rgba(125, 102, 78, 0.08);
+  display: flex;
+  flex-direction: column;
 }
 
 .layout.reader {
@@ -152,9 +154,11 @@ function onTabClick(path: string, event: MouseEvent) {
 }
 
 .main {
+  flex: 1;
   width: 100%;
   margin: 0 auto;
-  padding: 0 0 82px;
+  padding: 0 0 90px;
+  overflow-y: visible;
 }
 
 .layout.reader .main {

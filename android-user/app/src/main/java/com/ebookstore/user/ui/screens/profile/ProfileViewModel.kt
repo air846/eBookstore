@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.io.File
 import javax.inject.Inject
 
 @HiltViewModel
@@ -104,6 +105,25 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    fun uploadAvatar(file: File, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isUploading = true)
+
+            authRepository.uploadAvatar(file)
+                .onSuccess { url ->
+                    _uiState.value = _uiState.value.copy(
+                        isUploading = false,
+                        avatar = url
+                    )
+                    onSuccess()
+                }
+                .onFailure { e ->
+                    _uiState.value = _uiState.value.copy(isUploading = false)
+                    onError(e.message ?: "上传失败")
+                }
+        }
+    }
+
     fun markNoticeRead(id: Int) {
         viewModelScope.launch {
             bookRepository.markNoticeRead(id)
@@ -153,6 +173,7 @@ class ProfileViewModel @Inject constructor(
 data class ProfileUiState(
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
+    val isUploading: Boolean = false,
     val user: User? = null,
     val favorites: List<Book> = emptyList(),
     val history: List<ReadHistory> = emptyList(),

@@ -6,7 +6,9 @@ import com.bookstore.dto.RegisterRequest;
 import com.bookstore.dto.UserInfoUpdateRequest;
 import com.bookstore.dto.UserPasswordUpdateRequest;
 import com.bookstore.entity.User;
+import com.bookstore.vo.FileUploadVO;
 import com.bookstore.vo.LoginVO;
+import org.springframework.web.multipart.MultipartFile;
 
 public interface AuthService {
 
@@ -23,4 +25,6 @@ public interface AuthService {
     User updateUserInfo(Long userId, UserInfoUpdateRequest request);
 
     void updatePassword(Long userId, UserPasswordUpdateRequest request);
+
+    FileUploadVO uploadAvatar(Long userId, MultipartFile file);
 }

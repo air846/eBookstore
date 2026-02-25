@@ -166,16 +166,20 @@ onMounted(loadData);
       <el-button type="primary" circle>读</el-button>
     </section>
 
+    <!-- 占位空间，确保底部有足够空间 -->
+    <div style="height: 20px;"></div>
+
   </div>
 </template>
 
 <style scoped>
 .home-mobile {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 16px;
   max-width: 430px;
   margin: 0 auto;
-  padding: 10px 8px 14px;
+  padding: 10px 8px 24px;
 }
 
 .home-header {

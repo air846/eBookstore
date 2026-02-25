@@ -1,6 +1,7 @@
 package com.ebookstore.user.data.remote
 
 import com.ebookstore.user.data.model.*
+import okhttp3.MultipartBody
 import retrofit2.http.*
 
 interface ApiService {
@@ -19,6 +20,10 @@ interface ApiService {
 
     @PUT("user/password")
     suspend fun updatePassword(@Body request: UpdatePasswordRequest): ApiResponse<Unit>
+
+    @Multipart
+    @POST("user/avatar")
+    suspend fun uploadAvatar(@Part file: MultipartBody.Part): ApiResponse<FileUploadResponse>
 
     // Books
     @GET("book/list")

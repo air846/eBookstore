@@ -4,7 +4,11 @@ import com.ebookstore.user.data.local.PreferencesManager
 import com.ebookstore.user.data.model.*
 import com.ebookstore.user.data.remote.ApiService
 import kotlinx.coroutines.flow.first
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.HttpException
+import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -73,6 +77,21 @@ class AuthRepository @Inject constructor(
                 Result.success(Unit)
             } else {
                 Result.failure(Exception(response.message ?: "修改密码失败"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun uploadAvatar(file: File): Result<String> {
+        return try {
+            val requestBody = file.asRequestBody("image/*".toMediaTypeOrNull())
+            val part = MultipartBody.Part.createFormData("file", file.name, requestBody)
+            val response = apiService.uploadAvatar(part)
+            if (response.code == 200 && response.data != null) {
+                Result.success(response.data.url)
+            } else {
+                Result.failure(Exception(response.message ?: "上传头像失败"))
             }
         } catch (e: Exception) {
             Result.failure(e)
