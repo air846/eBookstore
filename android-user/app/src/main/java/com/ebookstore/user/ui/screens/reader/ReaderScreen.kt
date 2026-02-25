@@ -1,12 +1,10 @@
 package com.ebookstore.user.ui.screens.reader
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -23,7 +21,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,8 +59,16 @@ fun ReaderScreen(
     val paragraphs = remember(currentChapter) {
         currentChapter?.content?.split("\n\n")?.filter { it.isNotBlank() } ?: emptyList()
     }
-    val pagedParagraphs = remember(paragraphs, uiState.fontSize) {
-        paginateReaderParagraphs(paragraphs, uiState.fontSize)
+    val configuration = LocalConfiguration.current
+    val screenHeightDp = configuration.screenHeightDp
+    val screenWidthDp = configuration.screenWidthDp
+    val pagedParagraphs = remember(paragraphs, uiState.fontSize, screenHeightDp, screenWidthDp) {
+        paginateReaderParagraphs(
+            paragraphs = paragraphs,
+            fontSize = uiState.fontSize,
+            screenHeightDp = screenHeightDp,
+            screenWidthDp = screenWidthDp
+        )
     }
     val pageCount = pagedParagraphs.size.coerceAtLeast(1)
     val pagerState = rememberPagerState(pageCount = { pageCount })
@@ -70,6 +78,7 @@ fun ReaderScreen(
     val canGoPrevChapter = uiState.currentChapterIndex > 0
     val canGoNextChapter = uiState.currentChapterIndex < uiState.chapters.lastIndex
     val currentPageDisplay = (pagerState.currentPage + 1).coerceAtMost(pageCount)
+    val layoutDirection = LocalLayoutDirection.current
     val readingProgress = calculateReadingProgress(
         mode = uiState.readerMode,
         currentChapterIndex = uiState.currentChapterIndex,
@@ -89,6 +98,33 @@ fun ReaderScreen(
         }
     }
 
+    // Auto page turn for paged mode
+    LaunchedEffect(pagerState.currentPage, pageCount, uiState.currentChapterIndex, uiState.chapters.size, uiState.readerMode) {
+        if (uiState.readerMode != ReaderMode.PAGED) return@LaunchedEffect
+
+        val isLastPage = pagerState.currentPage == pageCount - 1
+        val hasNextChapter = uiState.currentChapterIndex < uiState.chapters.lastIndex
+
+        if (isLastPage && hasNextChapter && pageCount > 0) {
+            delay(500)
+            viewModel.nextChapter()
+        }
+    }
+
+    // Auto page turn for scroll mode
+    LaunchedEffect(scrollListState.canScrollForward, scrollListState.isScrollInProgress, uiState.currentChapterIndex, uiState.chapters.size, uiState.readerMode) {
+        if (uiState.readerMode != ReaderMode.SCROLL) return@LaunchedEffect
+
+        val isAtBottom = !scrollListState.canScrollForward
+        val hasStoppedScrolling = !scrollListState.isScrollInProgress
+        val hasNextChapter = uiState.currentChapterIndex < uiState.chapters.lastIndex
+
+        if (isAtBottom && hasStoppedScrolling && hasNextChapter) {
+            delay(500)
+            viewModel.nextChapter()
+        }
+    }
+
     fun previousPageOrChapter() {
         if (pagerState.currentPage > 0) {
             scope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) }
@@ -105,15 +141,163 @@ fun ReaderScreen(
         }
     }
 
+    fun toggleToolbars() {
+        val nextVisibleState = !showToolbars
+        showToolbars = nextVisibleState
+        if (!nextVisibleState) {
+            showSettings = false
+        }
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = backgroundColor
     ) { padding ->
+        val contentPadding = mergePaddingWithSafeArea(
+            basePadding = padding,
+            safePadding = WindowInsets.safeDrawing.asPaddingValues(),
+            layoutDirection = layoutDirection
+        )
+        val contentStartPadding = contentPadding.calculateStartPadding(layoutDirection)
+        val contentEndPadding = contentPadding.calculateEndPadding(layoutDirection)
+        val contentTopPadding = contentPadding.calculateTopPadding()
+        val contentBottomPadding = contentPadding.calculateBottomPadding()
+        val scrollModeBottomContentPadding = if (showToolbars) 140.dp else 32.dp
         Box(modifier = Modifier.fillMaxSize()) {
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
+                    .padding(
+                        start = contentStartPadding,
+                        top = contentTopPadding,
+                        end = contentEndPadding,
+                        bottom = contentBottomPadding
+                    )
+            ) {
+                // Content
+                if (uiState.isLoading) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        androidx.compose.material.CircularProgressIndicator()
+                    }
+                } else if (currentChapter != null) {
+                    if (uiState.readerMode == ReaderMode.PAGED) {
+                        HorizontalPager(
+                            state = pagerState,
+                            verticalAlignment = Alignment.Top,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            toggleToolbars()
+                                        }
+                                    )
+                                }
+                        ) { pageIndex ->
+                            val pageParagraphs = pagedParagraphs.getOrElse(pageIndex) { emptyList() }
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(bottom = 16.dp),
+                                verticalArrangement = Arrangement.Top
+                            ) {
+                                // 只在第一页显示章节标题
+                                if (pageIndex == 0) {
+                                    Text(
+                                        text = currentChapter.title,
+                                        fontSize = 24.sp,
+                                        color = textColor,
+                                        modifier = Modifier.padding(bottom = 16.dp)
+                                    )
+                                }
+
+                                pageParagraphs.forEach { pageParagraph ->
+                                    ReaderParagraphItem(
+                                        paragraphIndex = pageParagraph.index,
+                                        paragraphText = pageParagraph.text,
+                                        fontSize = uiState.fontSize,
+                                        textColor = textColor,
+                                        commentCount = uiState.commentCounts[pageParagraph.index],
+                                        onTapParagraph = { toggleToolbars() },
+                                        onOpenComment = {
+                                            if (currentChapter.id > 0) {
+                                                viewModel.loadComments(pageParagraph.index)
+                                                showCommentDrawer = true
+                                            }
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    } else {
+                        LazyColumn(
+                            state = scrollListState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 24.dp, vertical = 12.dp)
+                                .pointerInput(Unit) {
+                                    detectTapGestures(
+                                        onTap = {
+                                            toggleToolbars()
+                                        }
+                                    )
+                                },
+                            contentPadding = PaddingValues(bottom = scrollModeBottomContentPadding),
+                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            item(key = "chapter-title-${currentChapter.id}") {
+                                Text(
+                                    text = currentChapter.title,
+                                    fontSize = 24.sp,
+                                    color = textColor,
+                                    modifier = Modifier.padding(bottom = 12.dp)
+                                )
+                            }
+
+                            itemsIndexed(
+                                items = paragraphs,
+                                key = { index, _ -> "paragraph-${currentChapter.id}-$index" }
+                            ) { index, paragraph ->
+                                ReaderParagraphItem(
+                                    paragraphIndex = index,
+                                    paragraphText = paragraph,
+                                    fontSize = uiState.fontSize,
+                                    textColor = textColor,
+                                    commentCount = uiState.commentCounts[index],
+                                    onTapParagraph = { toggleToolbars() },
+                                    onOpenComment = {
+                                        if (currentChapter.id > 0) {
+                                            viewModel.loadComments(index)
+                                            showCommentDrawer = true
+                                        }
+                                    }
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("当前书籍还没有章节内容", color = textColor)
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .padding(
+                        start = contentStartPadding,
+                        top = contentTopPadding,
+                        end = contentEndPadding
+                    )
             ) {
                 // Top Bar
                 AnimatedVisibility(
@@ -208,225 +392,122 @@ fun ReaderScreen(
                         }
                     }
                 }
+            }
 
-                // Content
-                if (uiState.isLoading) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        androidx.compose.material.CircularProgressIndicator()
-                    }
-                } else if (currentChapter != null) {
-                    if (uiState.readerMode == ReaderMode.PAGED) {
-                        HorizontalPager(
-                            state = pagerState,
-                            verticalAlignment = Alignment.Top,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(24.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            showToolbars = !showToolbars
-                                        }
-                                    )
-                                }
-                        ) { pageIndex ->
-                            val pageParagraphs = pagedParagraphs.getOrElse(pageIndex) { emptyList() }
-                            Column(
-                                modifier = Modifier.fillMaxSize(),
-                                verticalArrangement = Arrangement.Top
-                            ) {
-                                // 只在第一页显示章节标题
-                                if (pageIndex == 0) {
-                                    Text(
-                                        text = currentChapter.title,
-                                        fontSize = 24.sp,
-                                        color = textColor,
-                                        modifier = Modifier.padding(bottom = 16.dp)
-                                    )
-                                }
-
-                                pageParagraphs.forEach { pageParagraph ->
-                                    ReaderParagraphItem(
-                                        paragraphIndex = pageParagraph.index,
-                                        paragraphText = pageParagraph.text,
-                                        fontSize = uiState.fontSize,
-                                        textColor = textColor,
-                                        commentCount = uiState.commentCounts[pageParagraph.index],
-                                        onOpenComment = {
-                                            if (currentChapter.id > 0) {
-                                                viewModel.loadComments(pageParagraph.index)
-                                                showCommentDrawer = true
-                                            }
-                                        }
-                                    )
-                                }
-                            }
-                        }
-                    } else {
-                        LazyColumn(
-                            state = scrollListState,
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(horizontal = 24.dp, vertical = 12.dp)
-                                .pointerInput(Unit) {
-                                    detectTapGestures(
-                                        onTap = {
-                                            showToolbars = !showToolbars
-                                        }
-                                    )
-                                },
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            item(key = "chapter-title-${currentChapter.id}") {
-                                Text(
-                                    text = currentChapter.title,
-                                    fontSize = 24.sp,
-                                    color = textColor,
-                                    modifier = Modifier.padding(bottom = 12.dp)
-                                )
-                            }
-
-                            itemsIndexed(
-                                items = paragraphs,
-                                key = { index, _ -> "paragraph-${currentChapter.id}-$index" }
-                            ) { index, paragraph ->
-                                ReaderParagraphItem(
-                                    paragraphIndex = index,
-                                    paragraphText = paragraph,
-                                    fontSize = uiState.fontSize,
-                                    textColor = textColor,
-                                    commentCount = uiState.commentCounts[index],
-                                    onOpenComment = {
-                                        if (currentChapter.id > 0) {
-                                            viewModel.loadComments(index)
-                                            showCommentDrawer = true
-                                        }
-                                    }
-                                )
-                            }
-                        }
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier.fillMaxSize(),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("当前书籍还没有章节内容", color = textColor)
-                    }
-                }
-
-                // Bottom Bar
-                AnimatedVisibility(
-                    visible = showToolbars,
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            // Bottom Bar
+            AnimatedVisibility(
+                visible = showToolbars,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .padding(
+                        start = contentStartPadding,
+                        end = contentEndPadding,
+                        bottom = contentBottomPadding
+                    ),
+                enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
+                exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
+            ) {
+                Surface(
+                    tonalElevation = 2.dp,
+                    color = backgroundColor.copy(alpha = 0.9f)
                 ) {
-                    Surface(
-                        tonalElevation = 2.dp,
-                        color = backgroundColor.copy(alpha = 0.9f)
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp)
                     ) {
-                        Column(
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = "CHAPTER ${(uiState.currentChapterIndex + 1).toString().padStart(2, '0')}",
+                                fontSize = 11.sp,
+                                color = textColor.copy(alpha = 0.7f)
+                            )
+                            Text(
+                                text = if (uiState.readerMode == ReaderMode.PAGED) {
+                                    "PAGE $currentPageDisplay/$pageCount"
+                                } else {
+                                    "滚动模式"
+                                },
+                                fontSize = 11.sp,
+                                color = textColor.copy(alpha = 0.7f)
+                            )
+                        }
+
+                        LinearProgressIndicator(
+                            progress = { readingProgress },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp)
+                                .padding(vertical = 6.dp),
+                        )
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = "CHAPTER ${(uiState.currentChapterIndex + 1).toString().padStart(2, '0')}",
-                                    fontSize = 11.sp,
-                                    color = textColor.copy(alpha = 0.7f)
-                                )
-                                Text(
-                                    text = if (uiState.readerMode == ReaderMode.PAGED) {
-                                        "PAGE $currentPageDisplay/$pageCount"
-                                    } else {
-                                        "滚动模式"
-                                    },
-                                    fontSize = 11.sp,
-                                    color = textColor.copy(alpha = 0.7f)
-                                )
-                            }
-
-                            LinearProgressIndicator(
-                                progress = { readingProgress },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 6.dp),
-                            )
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                if (uiState.readerMode == ReaderMode.PAGED) {
+                            if (uiState.readerMode == ReaderMode.PAGED) {
+                                OutlinedButton(
+                                    onClick = { previousPageOrChapter() },
+                                    enabled = canGoPrevPage,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("上一页")
+                                }
+                                OutlinedButton(
+                                    onClick = { nextPageOrChapter() },
+                                    enabled = canGoNextPage,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("下一页")
+                                }
+                                if (!canGoNextPage) {
                                     OutlinedButton(
-                                        onClick = { previousPageOrChapter() },
-                                        enabled = canGoPrevPage,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("上一页")
-                                    }
-                                    OutlinedButton(
-                                        onClick = { nextPageOrChapter() },
-                                        enabled = canGoNextPage,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("下一页")
-                                    }
-                                    if (!canGoNextPage) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                viewModel.urgeUpdate {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar("催更成功,已通知管理员")
-                                                    }
+                                        onClick = {
+                                            viewModel.urgeUpdate {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("催更成功,已通知管理员")
                                                 }
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text("催更")
-                                        }
-                                    }
-                                } else {
-                                    OutlinedButton(
-                                        onClick = { viewModel.prevChapter() },
-                                        enabled = canGoPrevChapter,
+                                            }
+                                        },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("上一章")
+                                        Text("催更")
                                     }
+                                }
+                            } else {
+                                OutlinedButton(
+                                    onClick = { viewModel.prevChapter() },
+                                    enabled = canGoPrevChapter,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("上一章")
+                                }
+                                OutlinedButton(
+                                    onClick = { viewModel.nextChapter() },
+                                    enabled = canGoNextChapter,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("下一章")
+                                }
+                                if (!canGoNextChapter) {
                                     OutlinedButton(
-                                        onClick = { viewModel.nextChapter() },
-                                        enabled = canGoNextChapter,
-                                        modifier = Modifier.weight(1f)
-                                    ) {
-                                        Text("下一章")
-                                    }
-                                    if (!canGoNextChapter) {
-                                        OutlinedButton(
-                                            onClick = {
-                                                viewModel.urgeUpdate {
-                                                    scope.launch {
-                                                        snackbarHostState.showSnackbar("催更成功,已通知管理员")
-                                                    }
+                                        onClick = {
+                                            viewModel.urgeUpdate {
+                                                scope.launch {
+                                                    snackbarHostState.showSnackbar("催更成功,已通知管理员")
                                                 }
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Text("催更")
-                                        }
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("催更")
                                     }
                                 }
                             }
                         }
-                    }
-                }
                     }
                 }
             }
@@ -524,6 +605,7 @@ private fun ReaderParagraphItem(
     fontSize: Int,
     textColor: Color,
     commentCount: Int?,
+    onTapParagraph: () -> Unit,
     onOpenComment: () -> Unit
 ) {
     val normalizedText = paragraphText.trim()
@@ -533,7 +615,10 @@ private fun ReaderParagraphItem(
         modifier = Modifier
             .fillMaxWidth()
             .pointerInput(paragraphIndex) {
-                detectTapGestures(onLongPress = { onOpenComment() })
+                detectTapGestures(
+                    onTap = { onTapParagraph() },
+                    onLongPress = { onOpenComment() }
+                )
             }
             .padding(vertical = 4.dp)
     ) {
@@ -568,6 +653,25 @@ internal data class ReaderPageParagraph(
     val text: String
 )
 
+internal fun mergePaddingWithSafeArea(
+    basePadding: PaddingValues,
+    safePadding: PaddingValues,
+    layoutDirection: LayoutDirection
+): PaddingValues {
+    return PaddingValues(
+        start = maxOf(
+            basePadding.calculateStartPadding(layoutDirection),
+            safePadding.calculateStartPadding(layoutDirection)
+        ),
+        top = maxOf(basePadding.calculateTopPadding(), safePadding.calculateTopPadding()),
+        end = maxOf(
+            basePadding.calculateEndPadding(layoutDirection),
+            safePadding.calculateEndPadding(layoutDirection)
+        ),
+        bottom = maxOf(basePadding.calculateBottomPadding(), safePadding.calculateBottomPadding())
+    )
+}
+
 internal fun calculateReadingProgress(
     mode: ReaderMode,
     currentChapterIndex: Int,
@@ -594,12 +698,25 @@ internal fun calculateReadingProgress(
 
 internal fun paginateReaderParagraphs(
     paragraphs: List<String>,
-    fontSize: Int
+    fontSize: Int,
+    screenHeightDp: Int = 800,
+    screenWidthDp: Int = 360
 ): List<List<ReaderPageParagraph>> {
     if (paragraphs.isEmpty()) return emptyList()
 
-    val charsPerPage = (720f * (18f / fontSize.coerceAtLeast(12))).toInt()
-        .coerceIn(260, 900)
+    val safeFontSize = fontSize.coerceAtLeast(12)
+    val estimatedContentWidthDp = (screenWidthDp - 48).coerceAtLeast(240)
+    val estimatedContentHeightDp = (screenHeightDp - 180).coerceAtLeast(420)
+    val estimatedCharsPerLine = (estimatedContentWidthDp / safeFontSize.toFloat())
+        .coerceIn(12f, 40f)
+    val estimatedLineCount = (estimatedContentHeightDp / (safeFontSize * 2f))
+        .coerceIn(10f, 42f)
+    val charsPerPage = (estimatedCharsPerLine * estimatedLineCount * 0.92f)
+        .toInt()
+        .coerceIn(220, 780)
+    // The first page also renders chapter title; reserve headroom to avoid clipping near footer.
+    val firstPageCharsPerPage = (charsPerPage * 0.7f).toInt()
+        .coerceIn(200, charsPerPage)
 
     val pages = mutableListOf<MutableList<ReaderPageParagraph>>()
     var currentPage = mutableListOf<ReaderPageParagraph>()
@@ -610,7 +727,8 @@ internal fun paginateReaderParagraphs(
         if (normalizedParagraph.isEmpty()) return@forEachIndexed
 
         val paragraphChars = normalizedParagraph.length + 2
-        if (currentPage.isNotEmpty() && currentChars + paragraphChars > charsPerPage) {
+        val pageCharLimit = if (pages.isEmpty()) firstPageCharsPerPage else charsPerPage
+        if (currentPage.isNotEmpty() && currentChars + paragraphChars > pageCharLimit) {
             pages.add(currentPage)
             currentPage = mutableListOf()
             currentChars = 0
