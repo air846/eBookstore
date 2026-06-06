@@ -7,7 +7,7 @@ spring:
   datasource:
     url: jdbc:mysql://49.235.45.42/ebookstore?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: ebookstore
-    password: 123456
+    password: 200509130074ai
     driver-class-name: com.mysql.cj.jdbc.Driver
   servlet:
     multipart:

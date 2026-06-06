@@ -5,8 +5,6 @@
 - `backend`：Spring Boot 后端（统一 API）
 - `library-user`：用户端 Web（Vue 3 + Element Plus，移动端 App 化适配）
 - `library-admin`：管理端 Web（Vue 3 + Element Plus）
-- `library-mp`：微信小程序端（MVP）
-- `android-user`：Android 原生用户端（Jetpack Compose + Kotlin）
 
 ---
 
@@ -29,19 +27,6 @@
 - Axios
 - ECharts
 
-### 小程序（`library-mp`）
-- 微信小程序原生框架
-- 复用后端 `/api` 接口
-
-### Android 端（`android-user`）
-- Kotlin + Jetpack Compose
-- Material Design 3
-- Retrofit + OkHttp（网络请求）
-- Hilt（依赖注入）
-- Coil（图片加载）
-- DataStore（本地存储）
-- Navigation Compose（导航）
-
 ---
 
 ## 主要功能
@@ -53,14 +38,6 @@
 - 书籍详情、收藏、书架管理
 - 阅读器（章节切换、阅读进度、段评互动、催更）
 - 个人中心（通知、阅读偏好、历史记录）
-
-### Android 端（`android-user`）
-- 用户登录 / 注册
-- 首页推荐、分类浏览
-- 书籍搜索、详情查看
-- 书架管理（收藏、历史记录）
-- 阅读器（章节切换、阅读进度保存、自动恢复上次阅读位置）
-- 个人中心（用户信息、退出登录）
 
 ### 管理端（`library-admin`）
 - 管理员登录
@@ -85,8 +62,6 @@
 ├─ backend/                  # Spring Boot 后端
 ├─ library-user/             # 用户端前端
 ├─ library-admin/            # 管理端前端
-├─ library-mp/               # 微信小程序端
-├─ android-user/             # Android 原生用户端
 └─ doc/
    ├─ api/接口清单.md
    ├─ sql/init.sql
@@ -103,10 +78,6 @@
 - Node.js `18+`（建议 LTS）
 - npm `9+`
 - MySQL `8+`
-- Android Studio `Hedgehog+`（用于 Android 端开发）
-- Android SDK `34+`
-
----
 
 ## 快速开始
 
@@ -159,20 +130,6 @@ npm run dev
 
 默认地址：`http://localhost:5174`
 
-### 5) 启动小程序（可选）
-
-1. 微信开发者工具导入 `library-mp`
-2. 修改 `library-mp/utils/config.js` 中 `BASE_URL`
-3. 确保后端可访问
-
-### 6) 运行 Android 端（可选）
-
-1. 使用 Android Studio 打开 `android-user` 目录
-2. 等待 Gradle 同步完成
-3. 修改 `app/src/main/java/com/example/library/data/remote/ApiConfig.kt` 中的 `BASE_URL`（如需）
-4. 连接 Android 设备或启动模拟器
-5. 点击 Run 按钮运行应用
-
 ---
 
 ## 默认账号
@@ -207,14 +164,6 @@ cd backend
 mvn clean package
 ```
 
-### Android 端
-
-```bash
-cd android-user
-./gradlew assembleRelease
-# APK 输出路径：app/build/outputs/apk/release/
-```
-
 ---
 
 ## 常见问题
@@ -236,18 +185,6 @@ cd android-user
 - 关闭 AdBlock/uBlock/AdGuard 对 `localhost` 的拦截
 - 或将 `localhost:5174`、`localhost:8080` 加入白名单
 
-### 3. 小程序真机访问失败
-
-`localhost` 在手机上指向手机本机。请改用电脑局域网 IP 或可访问域名。
-
-### 4. Android 端网络请求失败
-
-确保：
-- 后端服务已启动
-- `ApiConfig.kt` 中的 `BASE_URL` 配置正确
-- 如使用模拟器，`localhost` 应改为 `10.0.2.2`
-- 如使用真机，需使用局域网 IP 地址
-
 ---
 
 ## 配置说明
@@ -257,13 +194,11 @@ cd android-user
 - `server.port`：后端端口
 - `spring.datasource.*`：数据库连接
 - `jwt.secret`、`jwt.expire-seconds`：JWT 配置
-- `wechat.miniapp.appid/secret`：小程序登录配置
 
 ### 前端 API 地址
 
 - 用户端：`library-user/src/utils/request.ts`
 - 管理端：`library-admin/src/utils/request.ts`
-- Android 端：`android-user/app/src/main/java/com/example/library/data/remote/ApiConfig.kt`
 
 默认都指向：`http://localhost:8080/api`
 
@@ -274,8 +209,6 @@ cd android-user
 - 接口清单：`doc/api/接口清单.md`
 - SQL 初始化：`doc/sql/init.sql`
 - 联调说明：`doc/联调与运行说明.md`
-- 小程序说明：`library-mp/README.md`
-- Android 端说明：`android-user/README.md`
 
 ---
 
