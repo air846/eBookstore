@@ -3,7 +3,6 @@ package com.bookstore.controller;
 import com.bookstore.common.ApiResponse;
 import com.bookstore.common.UserContext;
 import com.bookstore.dto.LoginRequest;
-import com.bookstore.dto.MiniLoginRequest;
 import com.bookstore.dto.RegisterRequest;
 import com.bookstore.dto.UserInfoUpdateRequest;
 import com.bookstore.dto.UserPasswordUpdateRequest;
@@ -37,11 +36,6 @@ public class UserController {
     @PostMapping("/login")
     public ApiResponse<LoginVO> login(@Valid @RequestBody LoginRequest request) {
         return ApiResponse.success(authService.userLogin(request));
-    }
-
-    @PostMapping("/mp/login")
-    public ApiResponse<LoginVO> miniLogin(@Valid @RequestBody MiniLoginRequest request) {
-        return ApiResponse.success(authService.miniLogin(request));
     }
 
     @GetMapping("/info")
